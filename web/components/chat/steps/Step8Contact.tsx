@@ -1,0 +1,71 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useChatStore } from "@/store/chatStore";
+import { Step8Schema } from "@/lib/validators";
+import { logger } from "@/lib/logger";
+import { BubbleQuestion } from "@/components/chat/BubbleQuestion";
+import { BubbleAnswer } from "@/components/chat/BubbleAnswer";
+
+export function Step8({ isCurrent = true }: { isCurrent?: boolean }) {
+  const { setAnswer, loading, markDirty, dirtySteps, answers } = useChatStore();
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const [consent, setConsent] = useState(false);
+
+  useEffect(() => {
+    if (dirtySteps.has(8)) return;
+    const prev = answers?.[8] as { name?: string; contact?: string } | undefined;
+    if (prev?.name) setName(prev.name);
+    if (prev?.contact) setContact(prev.contact);
+  }, [answers, dirtySteps]);
+
+  const submit = async () => {
+    logger.event("ui:step8:submit", { name, contact });
+    const parsed = Step8Schema.safeParse({ name, contact, privacy_consent: consent });
+    if (!parsed.success) return;
+    await setAnswer(8, parsed.data);
+  };
+
+  return (
+    <div className="space-y-2">
+      <BubbleQuestion>성함과 연락처를 남겨주세요</BubbleQuestion>
+      <BubbleAnswer>
+      <div className="flex flex-col gap-2 mb-2">
+        <input className="border rounded px-2 py-1 text-sm" placeholder="이름" value={name} onChange={(e) => { setName(e.target.value); markDirty(8); }} />
+        <input className="border rounded px-2 py-1 text-sm" placeholder="전화번호 또는 이메일" value={contact} onChange={(e) => { setContact(e.target.value); markDirty(8); }} />
+        <label className="flex items-start gap-2 text-xs text-gray-600">
+          <input type="checkbox" checked={consent} onChange={(e)=> { setConsent(e.target.checked); markDirty(8); }} />
+          <span>
+            개인정보 수집·이용에 동의합니다 (이름·연락처는 상담 목적 외에 사용되지 않으며, 보관 기간은 상담 완료 후 관련 법령에 따릅니다)
+          </span>
+        </label>
+      </div>
+      </BubbleAnswer>
+      {!isCurrent && dirtySteps.has(8) && (
+        <div className="flex justify-end mt-1">
+          <div className="flex gap-2 text-xs">
+            <button className="px-2 py-1 rounded border bg-white hover:bg-gray-50 whitespace-nowrap" onClick={submit}>저장</button>
+          </div>
+        </div>
+      )}
+      {isCurrent && (
+      <div className="flex justify-end mt-1">
+        <div className="flex gap-2 text-xs">
+          <button className="px-2 py-1 rounded border bg-white hover:bg-gray-50 whitespace-nowrap" onClick={submit} disabled={((loading || !name || !contact || !consent) && !dirtySteps.has(8))}>
+            다음
+          </button>
+          <button
+            className="px-2 py-1 rounded border bg-white text-gray-600 hover:bg-gray-50 whitespace-nowrap"
+            onClick={async () => {
+              await setAnswer(8, { name: undefined, contact: undefined });
+            }}
+          >
+            {dirtySteps.has(8) ? "저장" : "건너뛰기"}
+          </button>
+        </div>
+      </div>
+      )}
+    </div>
+  );
+}
+
