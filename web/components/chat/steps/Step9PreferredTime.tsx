@@ -11,6 +11,7 @@ export function Step9({ isCurrent = true }: { isCurrent?: boolean }) {
   const { setAnswer, sessionId, loading, reset, markDirty, dirtySteps, answers } = useChatStore();
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     if (dirtySteps.has(9)) return;
@@ -27,9 +28,11 @@ export function Step9({ isCurrent = true }: { isCurrent?: boolean }) {
     if (!ok) return;
     await finalizeInquiry(sessionId);
     logger.event("ui:finalize:done");
-    // 세션 종료 및 새로고침
-    reset();
-    if (typeof window !== "undefined") window.location.reload();
+    setSubmitted(true);
+    setTimeout(() => {
+      reset();
+      if (typeof window !== "undefined") window.location.reload();
+    }, 5000);
   };
 
   return (
@@ -68,6 +71,17 @@ export function Step9({ isCurrent = true }: { isCurrent?: boolean }) {
           </button>
         </div>
       </div>
+      )}
+      {submitted && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-6 w-[90%] max-w-sm text-center shadow-xl">
+            <div className="text-lg font-semibold mb-2">제출이 완료되었습니다.</div>
+            <div className="text-sm text-gray-700 whitespace-pre-line">
+              {"담당자가 확인 후 연락드리겠습니다.\n문의주셔서 감사합니다😊"}
+            </div>
+            <div className="text-xs text-gray-400 mt-3">5초 뒤 초기 화면으로 돌아갑니다.</div>
+          </div>
+        </div>
       )}
     </div>
   );

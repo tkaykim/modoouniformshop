@@ -5,12 +5,15 @@ import { logger } from "@/lib/logger";
 import { Step2Schema } from "@/lib/validators";
 import { BubbleQuestion } from "@/components/chat/BubbleQuestion";
 import { BubbleAnswer } from "@/components/chat/BubbleAnswer";
+import { useRouter } from "next/navigation";
 
 const OPTIONS = ["가격", "퀄리티(원단,프린팅팅)", "납기일", "자세한 상담", "디자인"];
 
 export function Step2({ isCurrent = true }: { isCurrent?: boolean }) {
   const { setAnswer, markDirty, answers, dirtySteps } = useChatStore();
   const [selected, setSelected] = useState<string[]>([]);
+  const [easter, setEaster] = useState(0);
+  const router = useRouter();
 
   // Prefill from answers
   useEffect(() => {
@@ -38,9 +41,16 @@ export function Step2({ isCurrent = true }: { isCurrent?: boolean }) {
 
   return (
     <div className="space-y-2">
-      <BubbleQuestion>
-        제작 시 가장 중요하시는 3가지를 우선순위대로 골라주세요!
-      </BubbleQuestion>
+      <div onClick={() => {
+        const next = easter + 1;
+        setEaster(next);
+        if (next >= 8) router.push("/admin");
+        setTimeout(() => setEaster(0), 1500);
+      }}>
+        <BubbleQuestion>
+          제작 시 가장 중요하시는 3가지를 우선순위대로 골라주세요!
+        </BubbleQuestion>
+      </div>
       <BubbleAnswer>
         <div className="flex flex-wrap gap-2 mb-2">
         {OPTIONS.map((o) => (
