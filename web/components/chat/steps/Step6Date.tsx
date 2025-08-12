@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useChatStore } from "@/store/chatStore";
 import { Step6Schema } from "@/lib/validators";
 import { logger } from "@/lib/logger";
+import { todayKstISODate } from "@/lib/time";
 import { BubbleQuestion } from "@/components/chat/BubbleQuestion";
 import { BubbleAnswer } from "@/components/chat/BubbleAnswer";
 
@@ -18,9 +19,9 @@ export function Step6({ isCurrent = true }: { isCurrent?: boolean }) {
   const [dateStr, setDateStr] = useState<string>("");
 
   useEffect(() => {
-    // 기본 1주 뒤로 설정
-    const now = new Date();
-    const week = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    // 기본 1주 뒤 (KST 기준)
+    const base = new Date(todayKstISODate());
+    const week = new Date(base.getTime() + 7 * 24 * 60 * 60 * 1000);
     setDateStr(formatDateYYYYMMDD(week));
   }, []);
 
@@ -33,7 +34,7 @@ export function Step6({ isCurrent = true }: { isCurrent?: boolean }) {
 
   return (
     <div className="space-y-2">
-      <BubbleQuestion>제품이 필요한 날짜는 언제인가요? (KST 기준)</BubbleQuestion>
+      <BubbleQuestion>제품이 필요한 날짜는 언제인가요?</BubbleQuestion>
       <BubbleAnswer>
       <div className="flex items-center gap-2">
         <input
@@ -63,7 +64,7 @@ export function Step6({ isCurrent = true }: { isCurrent?: boolean }) {
               await setAnswer(6, { needed_date: undefined });
             }}
           >
-            {dirtySteps.has(6) ? "저장" : "건너뛰기"}
+            건너뛰기
           </button>
         </div>
       </div>

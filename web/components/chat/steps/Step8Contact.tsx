@@ -54,14 +54,6 @@ export function Step8({ isCurrent = true }: { isCurrent?: boolean }) {
           <button className="px-2 py-1 rounded border bg-white hover:bg-gray-50 whitespace-nowrap" onClick={submit} disabled={((loading || !name || !contact || !consent) && !dirtySteps.has(8))}>
             다음
           </button>
-          <button
-            className="px-2 py-1 rounded border bg-white text-gray-600 hover:bg-gray-50 whitespace-nowrap"
-            onClick={async () => {
-              await setAnswer(8, { name: undefined, contact: undefined });
-            }}
-          >
-            {dirtySteps.has(8) ? "저장" : "건너뛰기"}
-          </button>
         </div>
       </div>
       )}

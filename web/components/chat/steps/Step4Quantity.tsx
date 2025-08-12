@@ -59,7 +59,7 @@ export function Step4({ isCurrent = true }: { isCurrent?: boolean }) {
               await setAnswer(4, { quantity: undefined });
             }}
           >
-            {dirtySteps.has(4) ? "저장" : "건너뛰기"}
+            건너뛰기
           </button>
         </div>
       </div>

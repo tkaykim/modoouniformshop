@@ -66,18 +66,6 @@ export function Step9({ isCurrent = true }: { isCurrent?: boolean }) {
           <button className="px-2 py-1 rounded border bg-white hover:bg-gray-50 whitespace-nowrap" onClick={submit} disabled={(loading || !start || !end) && !dirtySteps.has(9)}>
             제출
           </button>
-          <button
-            className="px-2 py-1 rounded border bg-white text-gray-600 hover:bg-gray-50 whitespace-nowrap"
-            onClick={async () => {
-              const ok = await setAnswer(9, { preferred_time_start: undefined, preferred_time_end: undefined });
-              if (!ok) return;
-              await finalizeInquiry(sessionId);
-              reset();
-              if (typeof window !== "undefined") window.location.reload();
-            }}
-          >
-            건너뛰기
-          </button>
         </div>
       </div>
       )}

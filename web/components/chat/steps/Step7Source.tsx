@@ -68,7 +68,7 @@ export function Step7({ isCurrent = true }: { isCurrent?: boolean }) {
               await setAnswer(7, { heard_about: undefined });
             }}
           >
-            {dirtySteps.has(7) ? "저장" : "건너뛰기"}
+            건너뛰기
           </button>
         </div>
       </div>
