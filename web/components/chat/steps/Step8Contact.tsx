@@ -5,6 +5,7 @@ import { Step8Schema } from "@/lib/validators";
 import { logger } from "@/lib/logger";
 import { BubbleQuestion } from "@/components/chat/BubbleQuestion";
 import { BubbleAnswer } from "@/components/chat/BubbleAnswer";
+import { showToast } from "@/lib/toast";
 
 export function Step8({ isCurrent = true }: { isCurrent?: boolean }) {
   const { setAnswer, loading, markDirty, dirtySteps, answers } = useChatStore();
@@ -20,6 +21,10 @@ export function Step8({ isCurrent = true }: { isCurrent?: boolean }) {
   }, [answers, dirtySteps]);
 
   const submit = async () => {
+    if (!consent) {
+      showToast("개인정보 수집·이용에 동의해주셔야 진행이 가능합니다.");
+      return;
+    }
     logger.event("ui:step8:submit", { name, contact });
     const parsed = Step8Schema.safeParse({ name, contact, privacy_consent: consent });
     if (!parsed.success) return;
