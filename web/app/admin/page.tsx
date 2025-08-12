@@ -28,7 +28,12 @@ export default function AdminPage() {
 
   async function signUp() {
     setError(null);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/admin` : undefined;
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: redirectTo },
+    });
     if (error) setError(error.message);
   }
 
