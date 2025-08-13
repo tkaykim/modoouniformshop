@@ -35,13 +35,13 @@ export function Step1({ isCurrent = true }: { isCurrent?: boolean }) {
         <div className="flex gap-2 items-center flex-wrap">
           <button
             className={`px-4 py-2 rounded-full border ${value === "단체복" ? "bg-blue-600 text-white" : "bg-white text-black"}`}
-            onClick={() => { setValue("단체복"); markDirty(1); }}
+            onClick={async () => { setValue("단체복"); markDirty(1); await setAnswer(1, Step1Schema.parse({ inquiry_kind: "단체복" })); }}
           >
             단체복
           </button>
           <button
             className={`px-4 py-2 rounded-full border ${value === "커스텀 소량 굿즈" ? "bg-blue-600 text-white" : "bg-white text-black"}`}
-            onClick={() => { setValue("커스텀 소량 굿즈"); markDirty(1); }}
+            onClick={async () => { setValue("커스텀 소량 굿즈"); markDirty(1); await setAnswer(1, Step1Schema.parse({ inquiry_kind: "커스텀 소량 굿즈" })); }}
           >
             커스텀 소량 굿즈
           </button>

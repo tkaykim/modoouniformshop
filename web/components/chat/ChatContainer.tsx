@@ -14,6 +14,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 export function ChatContainer() {
   const { init, currentStep, reset, setFocusedStep } = useChatStore();
+  const enabled = [1,2,3,8];
   const stepRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -79,14 +80,14 @@ export function ChatContainer() {
       {/* 지난 스텝: currentStep 이전 단계만 노출 */}
       <div className="opacity-70 pb-24">
         <div className="space-y-[20px]">
-          {currentStep > 1 && <div ref={(el)=> { stepRefs.current[1]=el; }} onClick={() => setFocusedStep(1)}><Step1 isCurrent={false} /></div>}
-          {currentStep > 2 && <div ref={(el)=> { stepRefs.current[2]=el; }} onClick={() => setFocusedStep(2)}><Step2 isCurrent={false} /></div>}
-          {currentStep > 3 && <div ref={(el)=> { stepRefs.current[3]=el; }} onClick={() => setFocusedStep(3)}><Step3 isCurrent={false} /></div>}
-          {currentStep > 4 && <div ref={(el)=> { stepRefs.current[4]=el; }} onClick={() => setFocusedStep(4)}><Step4 isCurrent={false} /></div>}
-          {currentStep > 5 && <div ref={(el)=> { stepRefs.current[5]=el; }} onClick={() => setFocusedStep(5)}><Step5 isCurrent={false} /></div>}
-          {currentStep > 6 && <div ref={(el)=> { stepRefs.current[6]=el; }} onClick={() => setFocusedStep(6)}><Step6 isCurrent={false} /></div>}
-          {currentStep > 7 && <div ref={(el)=> { stepRefs.current[7]=el; }} onClick={() => setFocusedStep(7)}><Step7 isCurrent={false} /></div>}
-          {currentStep > 8 && <div ref={(el)=> { stepRefs.current[8]=el; }} onClick={() => setFocusedStep(8)}><Step8 isCurrent={false} /></div>}
+          {currentStep > 1 && enabled.includes(1) && <div ref={(el)=> { stepRefs.current[1]=el; }} onClick={() => setFocusedStep(1)}><Step1 isCurrent={false} /></div>}
+          {currentStep > 2 && enabled.includes(2) && <div ref={(el)=> { stepRefs.current[2]=el; }} onClick={() => setFocusedStep(2)}><Step2 isCurrent={false} /></div>}
+          {currentStep > 3 && enabled.includes(3) && <div ref={(el)=> { stepRefs.current[3]=el; }} onClick={() => setFocusedStep(3)}><Step3 isCurrent={false} /></div>}
+          {currentStep > 4 && enabled.includes(4) && <div ref={(el)=> { stepRefs.current[4]=el; }} onClick={() => setFocusedStep(4)}><Step4 isCurrent={false} /></div>}
+          {currentStep > 5 && enabled.includes(5) && <div ref={(el)=> { stepRefs.current[5]=el; }} onClick={() => setFocusedStep(5)}><Step5 isCurrent={false} /></div>}
+          {currentStep > 6 && enabled.includes(6) && <div ref={(el)=> { stepRefs.current[6]=el; }} onClick={() => setFocusedStep(6)}><Step6 isCurrent={false} /></div>}
+          {currentStep > 7 && enabled.includes(7) && <div ref={(el)=> { stepRefs.current[7]=el; }} onClick={() => setFocusedStep(7)}><Step7 isCurrent={false} /></div>}
+          {currentStep > 8 && enabled.includes(8) && <div ref={(el)=> { stepRefs.current[8]=el; }} onClick={() => setFocusedStep(8)}><Step8 isCurrent={false} /></div>}
         </div>
       </div>
       {/* 현재 편집 스텝 (항상 화면 정중앙 고정) */}
@@ -126,7 +127,7 @@ export function ChatContainer() {
               <Step3 isCurrent />
             </motion.div>
           )}
-          {currentStep === 4 && (
+          {currentStep === 4 && enabled.includes(4) && (
             <motion.div
               key="step4"
               initial={{ opacity: 0, y: 48, scale: 0.98 }}
@@ -137,7 +138,7 @@ export function ChatContainer() {
               <Step4 isCurrent />
             </motion.div>
           )}
-          {currentStep === 5 && (
+          {currentStep === 5 && enabled.includes(5) && (
             <motion.div
               key="step5"
               initial={{ opacity: 0, y: 48, scale: 0.98 }}
@@ -148,7 +149,7 @@ export function ChatContainer() {
               <Step5 isCurrent />
             </motion.div>
           )}
-          {currentStep === 6 && (
+          {currentStep === 6 && enabled.includes(6) && (
             <motion.div
               key="step6"
               initial={{ opacity: 0, y: 48, scale: 0.98 }}
@@ -159,7 +160,7 @@ export function ChatContainer() {
               <Step6 isCurrent />
             </motion.div>
           )}
-          {currentStep === 7 && (
+          {currentStep === 7 && enabled.includes(7) && (
             <motion.div
               key="step7"
               initial={{ opacity: 0, y: 48, scale: 0.98 }}
@@ -170,7 +171,7 @@ export function ChatContainer() {
               <Step7 isCurrent />
             </motion.div>
           )}
-          {currentStep === 8 && (
+          {currentStep === 8 && enabled.includes(8) && (
             <motion.div
               key="step8"
               initial={{ opacity: 0, y: 48, scale: 0.98 }}

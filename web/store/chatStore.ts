@@ -46,8 +46,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       try {
         const parsed = JSON.parse(saved) as Answers;
         set({ answers: parsed });
-        const lastCompleted = Math.max(0, ...Object.keys(parsed).map(Number));
-        const next = Math.min(Math.max(1, lastCompleted + 1), 9);
+        const enabled = [1,2,3,8];
+        const lastCompleted = Math.max(0, ...Object.keys(parsed).map(Number).filter((s)=> enabled.includes(Number(s))));
+        const nextIdx = Math.min(enabled.length, Math.max(1, enabled.indexOf(lastCompleted) + 2));
+        const next = enabled[nextIdx - 1] ?? 1;
         set({ currentStep: next });
         logger.event("chat:init:restored", { sessionId: sid, lastCompleted, next });
       } catch {}
@@ -62,8 +64,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const res = await upsertInquiryStep({ session_id: sessionId, step, payload });
       logger.info("chat:setAnswer:success", { res });
+      const enabled = [1,2,3,8];
       const current = get().currentStep;
-      const nextStep = Math.max(current, step + 1);
+      const idx = enabled.indexOf(step);
+      const nextStep = Math.max(current, enabled[idx + 1] ?? enabled[idx] ?? step);
       // 저장 성공 시 더티 플래그 해제
       const updatedDirty = new Set(get().dirtySteps);
       updatedDirty.delete(step);

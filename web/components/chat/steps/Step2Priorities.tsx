@@ -23,11 +23,20 @@ export function Step2({ isCurrent = true }: { isCurrent?: boolean }) {
     if (prev && prev.length) setSelected(prev.sort((a,b)=>a.rank-b.rank).map(p=>p.key));
   }, [answers, dirtySteps]);
 
-  const toggle = (opt: string) => {
+  const toggle = async (opt: string) => {
     logger.event("ui:step2:toggle", { opt });
-    setSelected((prev) =>
-      prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]
-    );
+    setSelected((prev) => {
+      const next = prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt];
+      // 3개 선택 시 자동 제출
+      if (next.length === 3) {
+        const priorities = next.map((key, idx) => ({ key, rank: idx + 1 }));
+        const parsed = Step2Schema.safeParse({ priorities });
+        if (parsed.success) {
+          setTimeout(() => setAnswer(2, parsed.data), 0);
+        }
+      }
+      return next;
+    });
     markDirty(2);
   };
 
