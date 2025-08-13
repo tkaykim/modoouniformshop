@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 
@@ -65,9 +65,9 @@ export default function ReviewPage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedIndex]);
+  }, [selectedIndex, prev, next]);
 
-  async function incrementView(id: string) {
+  const incrementView = useCallback(async (id: string) => {
     if (viewedIdsRef.current.has(id)) return;
     try {
       const { data, error } = await supabase.rpc('increment_review_view', { review_id: id });
@@ -93,7 +93,7 @@ export default function ReviewPage() {
     // 최종 폴백: 낙관적 UI 업데이트(서버 반영 실패 시)
     viewedIdsRef.current.add(id);
     setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, view_count: (r.view_count ?? 0) + 1 } : r)));
-  }
+  }, [setReviews]);
 
   function openAt(index: number) {
     setSelectedIndex(index);
@@ -105,21 +105,21 @@ export default function ReviewPage() {
     setSelectedIndex(null);
   }
 
-  function prev() {
+  const prev = useCallback(() => {
     if (selectedIndex === null || reviews.length === 0) return;
     const nextIndex = (selectedIndex - 1 + reviews.length) % reviews.length;
     setSelectedIndex(nextIndex);
     const id = reviews[nextIndex]?.id;
     if (id) incrementView(id);
-  }
+  }, [selectedIndex, reviews, incrementView]);
 
-  function next() {
+  const next = useCallback(() => {
     if (selectedIndex === null || reviews.length === 0) return;
     const nextIndex = (selectedIndex + 1) % reviews.length;
     setSelectedIndex(nextIndex);
     const id = reviews[nextIndex]?.id;
     if (id) incrementView(id);
-  }
+  }, [selectedIndex, reviews, incrementView]);
 
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-4">

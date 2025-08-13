@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { toKstDateTimeLocalString, kstLocalToISO } from "@/lib/time";
 import { StarRatingInput } from "@/components/ui/StarRatingInput";
@@ -75,7 +76,7 @@ export default function AdminReviewsPage() {
     <main className="max-w-xl mx-auto p-6 space-y-3">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-semibold">리뷰 작성</h1>
-        <a href="/review" className="px-3 py-2 border rounded text-sm">리뷰 목록 보기</a>
+        <Link href="/review" className="px-3 py-2 border rounded text-sm">리뷰 목록 보기</Link>
       </div>
       {error && <div className="text-sm text-red-600">{error}</div>}
       <label className="block text-sm">별점</label>
