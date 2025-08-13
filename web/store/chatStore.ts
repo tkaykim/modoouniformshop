@@ -14,7 +14,7 @@ type ChatState = {
   loading: boolean;
   error?: string;
   init: () => void;
-  setAnswer: (step: number, payload: Record<string, unknown>) => Promise<boolean>;
+  setAnswer: (step: number, payload: Record<string, unknown>, opts?: { optimistic?: boolean }) => Promise<boolean>;
   markDirty: (step: number) => void;
   clearDirty: (step: number) => void;
   setFocusedStep: (step: number | null) => void;
@@ -56,22 +56,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
     logger.event("chat:init:done", { sessionId: sid });
   },
-  setAnswer: async (step, payload) => {
+  setAnswer: async (step, payload, opts) => {
     logger.event("chat:setAnswer:start", { step, payload });
-    set({ loading: true, error: undefined });
+    set({ error: undefined });
     const { sessionId, answers } = get();
-      const nextAnswers: Answers = { ...answers, [step]: payload };
+    const enabled = [1,2,3,8];
+    const idx = enabled.indexOf(step);
+    const nextEnabledStep = enabled[idx + 1] ?? enabled[idx] ?? step;
+    const nextAnswers: Answers = { ...answers, [step]: payload };
+
+    if (opts?.optimistic) {
+      const updatedDirty = new Set(get().dirtySteps);
+      updatedDirty.delete(step);
+      set({ answers: nextAnswers, currentStep: Math.max(get().currentStep, nextEnabledStep), dirtySteps: updatedDirty });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("answers", JSON.stringify(nextAnswers));
+      }
+    }
+    set({ loading: true });
     try {
       const res = await upsertInquiryStep({ session_id: sessionId, step, payload });
       logger.info("chat:setAnswer:success", { res });
       const enabled = [1,2,3,8];
       const current = get().currentStep;
-      const idx = enabled.indexOf(step);
-      const nextStep = Math.max(current, enabled[idx + 1] ?? enabled[idx] ?? step);
-      // 저장 성공 시 더티 플래그 해제
+      const idx2 = enabled.indexOf(step);
+      const nextStep = Math.max(current, enabled[idx2 + 1] ?? enabled[idx2] ?? step);
+      // 저장 성공 시 더티 플래그 해제 및 비낙관적 진행 처리
       const updatedDirty = new Set(get().dirtySteps);
       updatedDirty.delete(step);
-      set({ answers: nextAnswers, currentStep: nextStep, loading: false, dirtySteps: updatedDirty });
+      if (!opts?.optimistic) {
+        set({ answers: nextAnswers, currentStep: nextStep, dirtySteps: updatedDirty });
+      } else {
+        set({ dirtySteps: updatedDirty });
+      }
+      set({ loading: false });
       if (typeof window !== "undefined") {
         localStorage.setItem("answers", JSON.stringify(nextAnswers));
       }

@@ -32,7 +32,7 @@ export function Step2({ isCurrent = true }: { isCurrent?: boolean }) {
         const priorities = next.map((key, idx) => ({ key, rank: idx + 1 }));
         const parsed = Step2Schema.safeParse({ priorities });
         if (parsed.success) {
-          setTimeout(() => setAnswer(2, parsed.data), 0);
+          setTimeout(() => setAnswer(2, parsed.data, { optimistic: true }), 0);
         }
       }
       return next;
