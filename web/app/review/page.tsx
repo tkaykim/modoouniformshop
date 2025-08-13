@@ -72,6 +72,7 @@ export default function ReviewPage() {
     if (id) incrementView(id);
   }, [selectedIndex, reviews, incrementView]);
 
+  // 키보드 네비게이션: prev/next 선언 이후 등록
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (selectedIndex === null) return;
@@ -82,6 +83,8 @@ export default function ReviewPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedIndex, prev, next]);
+
+  // 키보드 네비게이션 useEffect는 파일 하단에 prev/next 선언 이후에 등록됩니다.
 
   // 키보드 네비게이션은 prev/next 선언 이후에 등록
 
