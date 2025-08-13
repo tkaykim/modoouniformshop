@@ -123,10 +123,10 @@ export function ReviewsPreview({ onOpenAll }: { onOpenAll: () => void }) {
                     100% { transform: translateX(-50%); }
                 }
                 .animate-marquee-slow {
-                    animation: marqueeX 30s linear infinite;
+                    animation: marqueeX 21s linear infinite;
                 }
                 .animate-marquee-slow-reverse {
-                    animation: marqueeX 30s linear infinite reverse;
+                    animation: marqueeX 21s linear infinite reverse;
                 }
             `}</style>
         </section>
