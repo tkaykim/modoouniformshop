@@ -117,7 +117,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       localStorage.removeItem("session_id");
       localStorage.removeItem("answers");
     }
-    set({ sessionId: "", currentStep: 0, answers: {} });
+    const newId = uuidv4();
+    if (typeof window !== "undefined") {
+      localStorage.setItem("session_id", newId);
+    }
+    set({ sessionId: newId, currentStep: 1, answers: {}, dirtySteps: new Set<number>(), focusedStep: 1 });
   },
 }));
 
