@@ -92,7 +92,10 @@ export default function AdminPage() {
     <main className="max-w-4xl mx-auto p-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">상담 신청 내역</h1>
-        <button className="px-3 py-2 border rounded text-sm" onClick={signOut}>로그아웃</button>
+        <div className="flex gap-2">
+          <a href="/admin/reviews" className="px-3 py-2 border rounded text-sm">리뷰 생성</a>
+          <button className="px-3 py-2 border rounded text-sm" onClick={signOut}>로그아웃</button>
+        </div>
       </div>
       {loading ? (
         <div className="text-sm text-gray-500">불러오는 중…</div>
