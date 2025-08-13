@@ -66,15 +66,15 @@ export function ChatContainer() {
 
   return (
     <div ref={containerRef} className="space-y-4 relative min-h-[70vh]">
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         <button
-          className="text-xs px-2 py-1 border rounded text-gray-600"
+          className="text-sm px-3 py-1.5 rounded bg-[#0052cc] text-white shadow"
           onClick={() => {
             reset();
             if (typeof window !== "undefined") window.location.reload();
           }}
         >
-          새 상담 시작
+          새 상담 시작하기
         </button>
       </div>
       {/* 지난 스텝: currentStep 이전 단계만 노출 */}

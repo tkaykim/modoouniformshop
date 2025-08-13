@@ -59,7 +59,7 @@ export default function Home() {
       )}
       {/* 우측 하단 홈페이지 버튼 */}
       <a href="https://modoouniform.com" target="_blank" rel="noopener noreferrer" className="fixed bottom-4 right-4 z-50 px-3 py-2 rounded-full shadow text-sm" style={{ background: '#0052cc', color: 'white' }}>
-        [홈페이지 &gt;]
+        홈페이지&gt;
       </a>
     </main>
   );
