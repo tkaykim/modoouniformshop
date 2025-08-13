@@ -83,6 +83,8 @@ export default function ReviewPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedIndex, prev, next]);
 
+  // 키보드 네비게이션은 prev/next 선언 이후에 등록
+
   const incrementView = useCallback(async (id: string) => {
     if (viewedIdsRef.current.has(id)) return;
     try {
