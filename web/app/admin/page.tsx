@@ -49,6 +49,36 @@ export default function AdminPage() {
   };
   const [manualOpen, setManualOpen] = useState(false);
 
+  // Dashboard metrics
+  const stats = useMemo(() => {
+    const total = inquiries.length;
+    const newCount = inquiries.filter(i => i.status === 'new').length;
+    const unassigned = inquiries.filter(i => !i.assignee).length;
+    const myPending = inquiries.filter(i => i.assignee === currentUserId && (i.status === 'new' || i.status === 'in_progress')).length;
+    return { total, newCount, unassigned, myPending };
+  }, [inquiries, currentUserId]);
+
+  const agentCounts = useMemo(() => {
+    const byId: Record<string, { name: string; total: number; pending: number }>= {};
+    for (const p of profiles) {
+      byId[p.id] = { name: p.display_name || p.id.slice(0,6), total: 0, pending: 0 };
+    }
+    for (const i of inquiries) {
+      if (!i.assignee) continue;
+      if (!byId[i.assignee]) byId[i.assignee] = { name: i.assignee.slice(0,6), total: 0, pending: 0 };
+      byId[i.assignee].total += 1;
+      if (i.status === 'new' || i.status === 'in_progress') byId[i.assignee].pending += 1;
+    }
+    return Object.entries(byId).map(([id, v]) => ({ id, ...v })).sort((a,b)=> b.pending - a.pending);
+  }, [inquiries, profiles]);
+
+  const needReply = useMemo(() => (
+    inquiries
+      .filter(i => i.status === 'new')
+      .sort((a,b)=> (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
+      .slice(0, 8)
+  ), [inquiries]);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
@@ -206,37 +236,101 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">관리자</h1>
-        <div className="flex gap-2">
-          <a href="/admin" className="px-3 py-2 border rounded text-sm bg-white">문의 관리</a>
-          <a href="/admin/reviews" className="px-3 py-2 border rounded text-sm">리뷰 관리</a>
-          <button className="px-3 py-2 border rounded text-sm" onClick={signOut}>로그아웃</button>
+    <main className="w-full max-w-[1400px] mx-auto p-6 lg:p-8">
+      <div className="sticky top-0 z-30 mb-6 bg-white/80 backdrop-blur border-b">
+        <div className="flex items-center justify-between py-3">
+          <h1 className="text-2xl font-semibold tracking-tight">관리자</h1>
+          <div className="flex gap-2">
+            <a href="/admin" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">문의 관리</a>
+            <a href="/admin/reviews" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">리뷰 관리</a>
+            <button className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50" onClick={signOut}>로그아웃</button>
+          </div>
         </div>
       </div>
-      <div className="mb-3 border rounded px-3 py-2 bg-white text-sm">
+      <div className="mb-6 border rounded-xl px-4 py-3 bg-white shadow-sm text-sm">
         <div className="flex flex-col gap-0.5">
           <div><span className="text-gray-500">이름</span>: {currentUserName || '-'}</div>
           <div><span className="text-gray-500">이메일</span>: {currentUserEmail || '-'}</div>
           <div><span className="text-gray-500">역할</span>: {isAdmin ? '전체관리자' : '에이전트'}</div>
         </div>
       </div>
-      <div className="flex items-center justify-between mb-2">
+
+      {/* Brand header widgets */}
+      <section className="mb-6 rounded-2xl p-5" style={{ background: '#0052cc' }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-white">
+          <div className="rounded-xl bg-white/10 p-4">
+            <div className="text-xs opacity-80">총 문의</div>
+            <div className="text-2xl font-semibold">{stats.total}</div>
+          </div>
+          <div className="rounded-xl bg-white/10 p-4">
+            <div className="text-xs opacity-80">미답변</div>
+            <div className="text-2xl font-semibold">{stats.newCount}</div>
+          </div>
+          <div className="rounded-xl bg-white/10 p-4">
+            <div className="text-xs opacity-80">담당자 미지정</div>
+            <div className="text-2xl font-semibold">{stats.unassigned}</div>
+          </div>
+          <div className="rounded-xl bg-white/10 p-4">
+            <div className="text-xs opacity-80">내 대기중</div>
+            <div className="text-2xl font-semibold">{stats.myPending}</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Agent performance pills */}
+      {agentCounts.length > 0 && (
+        <section className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            {agentCounts.map(a => (
+              <div key={a.id} className="px-3 py-2 rounded-full border shadow-sm bg-white text-sm">
+                <span className="font-medium mr-2" style={{ color: '#0052cc' }}>{a.name}</span>
+                <span className="text-gray-600">총 {a.total}건</span>
+                <span className="mx-1 text-gray-300">|</span>
+                <span className="text-gray-600">대기 {a.pending}건</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Need action list */}
+      {needReply.length > 0 && (
+        <section className="mb-6 border rounded-xl bg-white shadow-sm">
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <h3 className="font-semibold">지금 답변해야 할 문의</h3>
+            <span className="text-xs text-gray-500">최근 {needReply.length}건</span>
+          </div>
+          <ul className="divide-y">
+            {needReply.map(n => (
+              <li key={n.id} className="px-4 py-3 text-sm flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#0052cc' }} />
+                  <div>
+                    <div className="font-medium">{n.name || '익명'} <span className="text-gray-400">· {n.inquiry_kind || '-'}</span></div>
+                    <div className="text-gray-500 text-xs">{new Date(n.created_at).toLocaleString('ko-KR')}</div>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600">{n.contact || '-'}</div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <div className="flex items-center justify-between mb-4">
         <div className="text-sm text-gray-600">역할: {isAdmin ? '전체관리자' : '에이전트'}</div>
         {isAdmin && (
-          <button onClick={bulkDelete} className="px-3 py-2 border rounded text-sm">선택 삭제</button>
+          <button onClick={bulkDelete} className="px-4 py-2 border rounded-full text-sm bg-white hover:bg-gray-50">선택 삭제</button>
         )}
       </div>
-      <h2 className="text-lg font-semibold mb-2">상담 신청 내역</h2>
+      <h2 className="text-xl font-semibold mb-3">상담 신청 내역</h2>
       {/* 수동 등록 카드 */}
-      <div className="mb-3 p-3 border rounded bg-white text-sm">
+      <div className="mb-6 p-4 border rounded-xl bg-white text-sm shadow-sm">
         <div className="flex items-center justify-between">
           <div className="font-semibold">상담 내역 직접 생성</div>
-          <button className="px-2 py-1 border rounded text-xs" onClick={()=> setManualOpen(v=> !v)}>{manualOpen ? '접기' : '펼치기'}</button>
+          <button className="px-2 py-1 border rounded-full text-xs bg-white hover:bg-gray-50" onClick={()=> setManualOpen(v=> !v)}>{manualOpen ? '접기' : '펼치기'}</button>
         </div>
         {manualOpen && (
-          <div className="mt-2">
+          <div className="mt-3">
             <ManualCreate onCreated={(row)=> setInquiries((prev)=> [row, ...prev])} profiles={profiles} kinds={kindOptions} />
           </div>
         )}
@@ -244,11 +338,11 @@ export default function AdminPage() {
       {loading ? (
         <div className="text-sm text-gray-500">불러오는 중…</div>
       ) : (
-        <div className="overflow-auto border rounded">
+        <div className="overflow-auto border rounded-xl shadow-sm">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50/80">
               <tr>
-                <th className="px-3 py-2 text-left">
+                <th className="px-4 py-3 text-left font-medium text-gray-700">
                   {isAdmin && (
                     <input
                       type="checkbox"
@@ -265,49 +359,49 @@ export default function AdminPage() {
                   )}
                   날짜
                 </th>
-                <th className="px-3 py-2 text-left">상태</th>
-                <th className="px-3 py-2 text-left">이름</th>
-                <th className="px-3 py-2 text-left">연락처</th>
-                <th className="px-3 py-2 text-left">종류</th>
-                <th className="px-3 py-2 text-left">수량</th>
-                <th className="px-3 py-2 text-left">담당자</th>
-                <th className="px-3 py-2 text-left">구분</th>
-                <th className="px-3 py-2 text-left">작업</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">상태</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">이름</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">연락처</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">종류</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">수량</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">담당자</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">구분</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">작업</th>
               </tr>
             </thead>
             <tbody>
               {inquiries.map((q) => (
                 <>
-                  <tr key={q.id} className="border-t">
-                    <td className="px-3 py-2">
+                  <tr key={q.id} className="border-t align-top hover:bg-gray-50">
+                    <td className="px-4 py-3">
                       {isAdmin && (
                         <input type="checkbox" className="mr-2" checked={selectedIds.has(q.id)} onChange={()=> toggleSelect(q.id)} />
                       )}
-                      <button className="mr-2 px-1 py-0.5 border rounded text-xs" onClick={()=> toggleExpand(q.id)}>{expandedIds.has(q.id) ? '접기' : '펼치기'}</button>
+                      <button className="mr-2 px-2 py-0.5 border rounded-full text-xs bg-white hover:bg-gray-50" onClick={()=> toggleExpand(q.id)}>{expandedIds.has(q.id) ? '접기' : '펼치기'}</button>
                       {new Date(q.created_at).toLocaleString("ko-KR")}
                     </td>
-                    <td className="px-3 py-2">
-                      <select className="border rounded px-2 py-1" defaultValue={q.status || 'new'} onChange={(e)=> updateInquiry(q.id, { status: e.target.value } as any)}>
+                    <td className="px-4 py-3">
+                      <select className="border rounded px-2 py-1 bg-white" defaultValue={q.status || 'new'} onChange={(e)=> updateInquiry(q.id, { status: e.target.value } as any)}>
                         <option value="new">미답변</option>
                         <option value="in_progress">진행중</option>
                         <option value="answered">답변완료</option>
                         <option value="closed">종료</option>
                       </select>
                     </td>
-                    <td className="px-3 py-2">{q.name || "-"}</td>
-                    <td className="px-3 py-2">{q.contact || "-"}</td>
-                    <td className="px-3 py-2">{q.inquiry_kind || "-"}</td>
-                    <td className="px-3 py-2">{q.quantity ?? "-"}</td>
-                    <td className="px-3 py-2">
-                      <select className="border rounded px-2 py-1" defaultValue={q.assignee || ''} onChange={(e)=> updateInquiry(q.id, { assignee: e.target.value || null } as any)}>
+                    <td className="px-4 py-3">{q.name || "-"}</td>
+                    <td className="px-4 py-3">{q.contact || "-"}</td>
+                    <td className="px-4 py-3">{q.inquiry_kind || "-"}</td>
+                    <td className="px-4 py-3">{q.quantity ?? "-"}</td>
+                    <td className="px-4 py-3">
+                      <select className="border rounded px-2 py-1 bg-white" defaultValue={q.assignee || ''} onChange={(e)=> updateInquiry(q.id, { assignee: e.target.value || null } as any)}>
                         <option value="">미지정</option>
                         {profiles.map((p)=> (
                           <option key={p.id} value={p.id}>{p.display_name || p.id.slice(0,6)}</option>
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-2">
-                      <select className="border rounded px-2 py-1" defaultValue={q.source || ''} onChange={(e)=> updateInquiry(q.id, { source: (e.target.value || null) as any })}>
+                    <td className="px-4 py-3">
+                      <select className="border rounded px-2 py-1 bg-white" defaultValue={q.source || ''} onChange={(e)=> updateInquiry(q.id, { source: (e.target.value || null) as any })}>
                         <option value="">-</option>
                         <option>네이버 스마트스토어</option>
                         <option>카카오톡채널</option>
@@ -316,17 +410,17 @@ export default function AdminPage() {
                         <option>지인</option>
                       </select>
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <button className="px-2 py-1 border rounded mr-2" onClick={()=> openEdit(q)}>수정</button>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button className="px-3 py-1.5 border rounded-full bg-white hover:bg-gray-50 mr-2" onClick={()=> openEdit(q)}>수정</button>
                       {isAdmin && (
-                        <button className="px-2 py-1 border rounded" onClick={()=> deleteInquiry(q.id)}>삭제</button>
+                        <button className="px-3 py-1.5 border rounded-full bg-white hover:bg-gray-50" onClick={()=> deleteInquiry(q.id)}>삭제</button>
                       )}
                     </td>
                   </tr>
                   {expandedIds.has(q.id) && (
                     <tr>
-                      <td className="px-3 py-2 bg-gray-50" colSpan={9}>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                      <td className="px-4 py-3 bg-gray-50" colSpan={9}>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div><span className="text-gray-500">이름</span>: {q.name || '-'}</div>
                           <div><span className="text-gray-500">연락처</span>: {q.contact || '-'}</div>
                           <div><span className="text-gray-500">종류</span>: {q.inquiry_kind || '-'}</div>
