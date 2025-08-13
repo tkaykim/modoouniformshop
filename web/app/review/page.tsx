@@ -56,38 +56,6 @@ export default function ReviewPage() {
     })();
   }, []);
 
-  const prev = useCallback(() => {
-    if (selectedIndex === null || reviews.length === 0) return;
-    const nextIndex = (selectedIndex - 1 + reviews.length) % reviews.length;
-    setSelectedIndex(nextIndex);
-    const id = reviews[nextIndex]?.id;
-    if (id) incrementView(id);
-  }, [selectedIndex, reviews, incrementView]);
-
-  const next = useCallback(() => {
-    if (selectedIndex === null || reviews.length === 0) return;
-    const nextIndex = (selectedIndex + 1) % reviews.length;
-    setSelectedIndex(nextIndex);
-    const id = reviews[nextIndex]?.id;
-    if (id) incrementView(id);
-  }, [selectedIndex, reviews, incrementView]);
-
-  // 키보드 네비게이션: prev/next 선언 이후 등록
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (selectedIndex === null) return;
-      if (e.key === "Escape") setSelectedIndex(null);
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selectedIndex, prev, next]);
-
-  // 키보드 네비게이션 useEffect는 파일 하단에 prev/next 선언 이후에 등록됩니다.
-
-  // 키보드 네비게이션은 prev/next 선언 이후에 등록
-
   const incrementView = useCallback(async (id: string) => {
     if (viewedIdsRef.current.has(id)) return;
     try {
@@ -115,6 +83,34 @@ export default function ReviewPage() {
     viewedIdsRef.current.add(id);
     setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, view_count: (r.view_count ?? 0) + 1 } : r)));
   }, [setReviews]);
+
+  const prev = useCallback(() => {
+    if (selectedIndex === null || reviews.length === 0) return;
+    const nextIndex = (selectedIndex - 1 + reviews.length) % reviews.length;
+    setSelectedIndex(nextIndex);
+    const id = reviews[nextIndex]?.id;
+    if (id) incrementView(id);
+  }, [selectedIndex, reviews, incrementView]);
+
+  const next = useCallback(() => {
+    if (selectedIndex === null || reviews.length === 0) return;
+    const nextIndex = (selectedIndex + 1) % reviews.length;
+    setSelectedIndex(nextIndex);
+    const id = reviews[nextIndex]?.id;
+    if (id) incrementView(id);
+  }, [selectedIndex, reviews, incrementView]);
+
+  // 키보드 네비게이션: prev/next 선언 이후 등록
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (selectedIndex === null) return;
+      if (e.key === "Escape") setSelectedIndex(null);
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedIndex, prev, next]);
 
   function openAt(index: number) {
     setSelectedIndex(index);
