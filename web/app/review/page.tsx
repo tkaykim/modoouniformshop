@@ -56,6 +56,22 @@ export default function ReviewPage() {
     })();
   }, []);
 
+  const prev = useCallback(() => {
+    if (selectedIndex === null || reviews.length === 0) return;
+    const nextIndex = (selectedIndex - 1 + reviews.length) % reviews.length;
+    setSelectedIndex(nextIndex);
+    const id = reviews[nextIndex]?.id;
+    if (id) incrementView(id);
+  }, [selectedIndex, reviews, incrementView]);
+
+  const next = useCallback(() => {
+    if (selectedIndex === null || reviews.length === 0) return;
+    const nextIndex = (selectedIndex + 1) % reviews.length;
+    setSelectedIndex(nextIndex);
+    const id = reviews[nextIndex]?.id;
+    if (id) incrementView(id);
+  }, [selectedIndex, reviews, incrementView]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (selectedIndex === null) return;
@@ -105,21 +121,7 @@ export default function ReviewPage() {
     setSelectedIndex(null);
   }
 
-  const prev = useCallback(() => {
-    if (selectedIndex === null || reviews.length === 0) return;
-    const nextIndex = (selectedIndex - 1 + reviews.length) % reviews.length;
-    setSelectedIndex(nextIndex);
-    const id = reviews[nextIndex]?.id;
-    if (id) incrementView(id);
-  }, [selectedIndex, reviews, incrementView]);
-
-  const next = useCallback(() => {
-    if (selectedIndex === null || reviews.length === 0) return;
-    const nextIndex = (selectedIndex + 1) % reviews.length;
-    setSelectedIndex(nextIndex);
-    const id = reviews[nextIndex]?.id;
-    if (id) incrementView(id);
-  }, [selectedIndex, reviews, incrementView]);
+  // prev/next는 위로 이동하여 선언 순서 경고 해결
 
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-4">

@@ -15,7 +15,7 @@ function formatDateYYYYMMDD(date: Date) {
 }
 
 export function Step6({ isCurrent = true }: { isCurrent?: boolean }) {
-  const { setAnswer, loading, markDirty, dirtySteps, answers } = useChatStore();
+  const { setAnswer, loading, markDirty, dirtySteps } = useChatStore();
   const [dateStr, setDateStr] = useState<string>("");
 
   useEffect(() => {
