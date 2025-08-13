@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #ffffff !important;
+  --foreground: #111111 !important;
 }
 
 @theme inline {
@@ -12,15 +12,16 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* 강제 라이트 모드: 시스템 다크모드 무시 */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #ffffff !important;
+    --foreground: #111111 !important;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--background) !important;
+  color: var(--foreground) !important;
   font-family: Arial, Helvetica, sans-serif;
 }

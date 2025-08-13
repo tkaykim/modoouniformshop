@@ -70,17 +70,15 @@ export function ReviewsPreview({ onOpenAll }: { onOpenAll: () => void }) {
         const startX = useRef(0);
         const startLeft = useRef(0);
         const dir = reverse ? -1 : 1;
-        const speed = 0.9; // px per frame
+        const speed = 1.2; // px per frame
 
         useEffect(() => {
             const cont = containerRef.current;
             const content = contentRef.current;
             if (!cont || !content) return;
-            // reverse 행은 시작을 중간지점으로 세팅해 끊김 없이 진행
-            if (reverse) {
-                const halfInit = content.scrollWidth / 2;
-                cont.scrollLeft = halfInit - 1;
-            }
+            // 시작 위치 살짝 오프셋 (정/역방향 모두)
+            const halfInit = content.scrollWidth / 2;
+            cont.scrollLeft = reverse ? (halfInit - 1) : 1;
             let raf = 0;
             const step = () => {
                 if (!isDragging.current) {

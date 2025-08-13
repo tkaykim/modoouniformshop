@@ -44,6 +44,10 @@ create policy "reviews_insert_auth" on public.reviews for insert to authenticate
 drop policy if exists "reviews_update_auth" on public.reviews;
 create policy "reviews_update_auth" on public.reviews for update to authenticated using (true);
 
+-- Allow authenticated users to delete reviews (admin UI)
+drop policy if exists "reviews_delete_auth" on public.reviews;
+create policy "reviews_delete_auth" on public.reviews for delete to authenticated using (true);
+
 -- Storage bucket for review images (public)
 do $$ begin
   perform storage.create_bucket('reviews', public => true);
@@ -88,4 +92,38 @@ $$;
 
 revoke all on function public.increment_review_view(uuid) from public;
 grant execute on function public.increment_review_view(uuid) to anon, authenticated;
+
+-- Helper: return current user info (email from auth.users, name/role from profiles)
+create or replace function public.get_me()
+returns table (id uuid, email text, display_name text, role text)
+language sql
+security definer
+set search_path = public
+as $$
+  select u.id, u.email, p.display_name, p.role::text
+  from auth.users u
+  join public.profiles p on p.id = u.id
+  where u.id = auth.uid();
+$$;
+
+revoke all on function public.get_me() from public;
+grant execute on function public.get_me() to authenticated;
+
+-- Admin-only: list all users with profiles (returns empty if caller is not admin)
+create or replace function public.list_users_admin()
+returns table (id uuid, email text, display_name text, role text)
+language sql
+security definer
+set search_path = public
+as $$
+  select u.id, u.email, p.display_name, p.role::text
+  from auth.users u
+  join public.profiles p on p.id = u.id
+  where exists (
+    select 1 from public.profiles me where me.id = auth.uid() and me.role::text = 'admin'
+  );
+$$;
+
+revoke all on function public.list_users_admin() from public;
+grant execute on function public.list_users_admin() to authenticated;
 
