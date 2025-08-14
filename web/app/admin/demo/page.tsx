@@ -156,14 +156,14 @@ export default function DemoAdminPage() {
 
   const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
   const fromDate = useMemo(()=> subDays(new Date(), periodDays-1), [periodDays]);
-  const filteredSales = useMemo(() => salesData.filter(s => new Date(s.date) >= fromDate), [salesData, fromDate]);
+  // const filteredSales = useMemo(() => salesData.filter(s => new Date(s.date) >= fromDate), [salesData, fromDate]);
   const filteredExpenses = useMemo(() => expenseData.filter(e => new Date(e.date) >= fromDate), [expenseData, fromDate]);
 
   const stats = useMemo(() => {
     const total = inquiries.length;
-    const newCount = inquiries.filter(i => i.status === "new").length;
+    const newCount = inquiries.filter(i => i.status === 'new').length;
     const unassigned = inquiries.filter(i => !i.assignee).length;
-    const myPending = inquiries.filter(i => i.assignee === "u1" && (i.status === 'new' || i.status === 'in_progress')).length;
+    const myPending = inquiries.filter(i => i.assignee === 'u1' && (i.status === 'new' || i.status === 'in_progress')).length;
     return { total, newCount, unassigned, myPending };
   }, [inquiries]);
 
@@ -879,7 +879,6 @@ function KpiTile({ label, value, tone }: { label: string; value: string; tone: s
 
 function TodoDetailModal({ data, onClose }: { data: { kind:'work'|'field'|'marketing'; item: WorkItem | FieldSalesItem | MarketingItem }; onClose: ()=>void }){
   const { kind, item } = data;
-  const [note, setNote] = useState<string>('');
   const [assignee, setAssignee] = useState<string>(item.assigneeId || '');
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center">
@@ -982,15 +981,7 @@ function NotesPanel({ notes, onAdd, onTogglePin }: { notes: {id:string; authorId
   );
 }
 
-function labelStatus(s: Inquiry["status"]) {
-  switch (s) {
-    case 'new': return '미답변';
-    case 'in_progress': return '진행중';
-    case 'answered': return '답변완료';
-    case 'closed': return '종료';
-    default: return s;
-  }
-}
+// labelStatus: not used in demo
 
 function statusBadge(s: Inquiry["status"]) {
   const map: Record<string,{bg:string;color:string;label:string}> = {
@@ -1033,62 +1024,11 @@ function Card({ title, span, children }: { title: string; span?: number; childre
   );
 }
 
-function SimpleLineChart({ series }: { series: { labels: string[]; lines: { name: string; color: string; data: number[] }[] } }) {
-  // Normalize data to fit 0..100
-  const max = Math.max(...series.lines.flatMap(l=> l.data));
-  const points = (arr:number[]) => arr.map((v,i)=> `${(i/(arr.length-1))*100},${100-(v/max)*100}`).join(' ');
-  return (
-    <div className="w-full h-56">
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
-        <rect x="0" y="0" width="100" height="100" fill="#f8fafc" />
-        {series.lines.map((l,idx)=> (
-          <polyline key={idx} fill="none" stroke={l.color} strokeWidth="1.5" points={points(l.data)} />
-        ))}
-      </svg>
-      <div className="flex gap-3 mt-2 text-xs text-gray-600">
-        {series.lines.map(l=> (<div key={l.name} className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full" style={{ background:l.color }} />{l.name}</div>))}
-      </div>
-    </div>
-  );
-}
+// SimpleLineChart (unused in demo)
 
-function DonutChart({ parts }:{ parts:{label:string; value:number; color:string}[] }){
-  const total = parts.reduce((a,b)=> a+b.value, 0);
-  let acc = 0;
-  const segs = parts.map(p=> {
-    const start = acc/total*100; acc += p.value; const end = acc/total*100; return { start, end, color:p.color };
-  });
-  return (
-    <div className="flex items-center gap-4">
-      <svg viewBox="0 0 42 42" className="w-28 h-28 -rotate-90">
-        <circle cx="21" cy="21" r="15.915" fill="#f1f5f9" />
-        {segs.map((s,i)=> (
-          <circle key={i} cx="21" cy="21" r="15.915" fill="transparent" stroke={s.color} strokeWidth="6" strokeDasharray={`${s.end-s.start} ${100-(s.end-s.start)}`} strokeDashoffset={`${25 - s.start}`} />
-        ))}
-        <circle cx="21" cy="21" r="10" fill="white" />
-      </svg>
-      <div className="text-xs text-gray-600">
-        {parts.map(p=> (
-          <div key={p.label} className="flex items-center gap-2 mb-1"><span className="inline-block w-2 h-2 rounded-full" style={{ background:p.color }} />{p.label} ({p.value}%)</div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// DonutChart (unused in demo)
 
-function Waterfall({ steps }: { steps:{label:string; value:number; color:string}[] }){
-  const max = Math.max(1, ...steps.map(s=> Math.abs(s.value)));
-  return (
-    <div className="w-full h-56 flex items-end gap-2">
-      {steps.map((s,i)=> (
-        <div key={i} className="flex-1 flex flex-col items-center">
-          <div className="w-full" style={{ height:`${Math.abs(s.value)/max*90}%`, background: s.value>=0? '#e0ecff':'#fee2e2', border:`1px solid ${s.color}` }} />
-          <div className="text-xs mt-1 text-gray-600 truncate w-full text-center">{s.label}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
+// Waterfall (unused in demo)
 
 function League({ rows }:{ rows:{name:string; metric:string}[] }){
   return (
@@ -1130,14 +1070,7 @@ function Kanban({ columns, items, onMove, onOpenDetail }: { columns: { key: Work
   );
 }
 
-function AssigneeSelect({ value, onChange }:{ value?: string; onChange:(v:string)=>void }){
-  const options = [{ id:'', name:'미지정' }, ...profiles];
-  return (
-    <select className="border rounded px-2 py-1 text-xs bg-white" value={value || ''} onChange={(e)=> onChange(e.target.value)}>
-      {options.map(o=> (<option key={o.id} value={o.id}>{o.name || o.id || '미지정'}</option>))}
-    </select>
-  );
-}
+// AssigneeSelect (unused in demo)
 
 function KanbanCard({ item, onOpenDetail }: { item: WorkItem; onOpenDetail: ()=>void }){
   const [open, setOpen] = useState(false);

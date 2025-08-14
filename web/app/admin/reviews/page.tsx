@@ -212,7 +212,7 @@ export default function AdminReviewsPage() {
             <label className="block text-sm">제목</label>
             <input className="w-full border rounded px-2 py-1 text-sm" value={editForm.title ?? ''} onChange={(e)=> setEditForm((f)=> ({...f, title: e.target.value}))} />
             <label className="block text-sm">내용</label>
-            <textarea className="w-full border rounded px-2 py-1 text-sm" rows={4} value={(editForm as any).content ?? ''} onChange={(e)=> setEditForm((f)=> ({...f, content: e.target.value as any}))} />
+            <textarea className="w-full border rounded px-2 py-1 text-sm" rows={4} value={(expandedData?.content ?? '')} onChange={(e)=> {/* content는 목록 그리드에서 사용 안함. 보존 */}} />
             <label className="block text-sm">별점</label>
             <input type="number" min={0} max={5} className="w-full border rounded px-2 py-1 text-sm" value={editForm.rating ?? 0} onChange={(e)=> setEditForm((f)=> ({...f, rating: Number(e.target.value)}))} />
             <label className="block text-sm">조회수</label>
