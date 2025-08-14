@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
+import { shimmer } from "@/lib/img";
 
 type Review = {
 	id: string;
@@ -27,8 +28,8 @@ function StarRating({ value }: { value: number }) {
 function Thumb({ src }: { src?: string }) {
 	if (src) {
 		return (
-			<div className="relative w-28 h-20 rounded-md overflow-hidden flex-shrink-0">
-				<Image src={src} alt="thumb" fill sizes="160px" className="object-cover" />
+            <div className="relative w-28 h-20 rounded-md overflow-hidden flex-shrink-0 bg-gray-100">
+                <Image src={src} alt="thumb" fill priority={false} loading="lazy" sizes="160px" className="object-cover" placeholder="blur" blurDataURL={shimmer(160, 114)} />
 			</div>
 		);
 	}

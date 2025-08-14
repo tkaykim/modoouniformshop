@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
+import { shimmer } from "@/lib/img";
 
 type Review = {
 	id: string;
@@ -48,8 +49,8 @@ export function ReviewsModal({ open, onClose }: { open: boolean; onClose: () => 
 							return (
 								<div key={r.id} className="rounded-xl overflow-hidden border bg-white">
 									{thumb ? (
-										<div className="relative w-full h-40">
-											<Image src={thumb} alt="thumb" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+                                        <div className="relative w-full h-40 bg-gray-100">
+                                            <Image src={thumb} alt="thumb" fill loading="lazy" sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" placeholder="blur" blurDataURL={shimmer(600, 160)} />
 										</div>
 									) : (
 										<div className="w-full h-40 flex items-center justify-center" style={{ background: '#0052cc' }}>

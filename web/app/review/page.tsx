@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
+import { shimmer } from "@/lib/img";
 
 type Review = {
   id: string;
@@ -27,8 +28,8 @@ function StarRating({ value }: { value: number }) {
 function Thumb({ src }: { src?: string }) {
   if (src) {
     return (
-      <div className="relative w-full h-40 md:h-48 rounded-lg overflow-hidden">
-        <Image src={src} alt="thumb" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+      <div className="relative w-full h-40 md:h-48 rounded-lg overflow-hidden bg-gray-100">
+        <Image src={src} alt="thumb" fill loading="lazy" sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" placeholder="blur" blurDataURL={shimmer(600,192)} />
       </div>
     );
   }
@@ -170,8 +171,8 @@ export default function ReviewPage() {
               return (
                 <>
                   {thumb ? (
-                    <div className="relative w-full h-56 md:h-72">
-                      <Image src={thumb} alt="thumb" fill sizes="100vw" className="object-cover" />
+                    <div className="relative w-full h-56 md:h-72 bg-gray-100">
+                      <Image src={thumb} alt="thumb" fill loading="lazy" sizes="100vw" className="object-cover" placeholder="blur" blurDataURL={shimmer(1024,288)} />
                     </div>
                   ) : (
                     <div className="w-full h-56 md:h-72 flex items-center justify-center" style={{ background: '#0052cc' }}>

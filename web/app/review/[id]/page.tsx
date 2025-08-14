@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
+import { shimmer } from "@/lib/img";
 
 type Review = {
 	id: string;
@@ -55,8 +56,8 @@ export default function ReviewDetailPage() {
 		<main className="max-w-2xl mx-auto p-6 space-y-4">
 			<div className="rounded-2xl overflow-hidden bg-white shadow-sm">
 				{thumb ? (
-					<div className="relative w-full h-56 md:h-72">
-						<Image src={thumb} alt="thumb" fill sizes="100vw" className="object-cover" />
+					<div className="relative w-full h-56 md:h-72 bg-gray-100">
+						<Image src={thumb} alt="thumb" fill loading="lazy" sizes="100vw" className="object-cover" placeholder="blur" blurDataURL={shimmer(1024, 288)} />
 					</div>
 				) : (
 					<div className="w-full h-56 md:h-72 flex items-center justify-center" style={{ background: '#0052cc' }}>
