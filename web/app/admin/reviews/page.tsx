@@ -24,7 +24,7 @@ export default function AdminReviewsPage() {
   const [editing, setEditing] = useState<ReviewRow | null>(null);
   const [editForm, setEditForm] = useState<Partial<ReviewRow>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedData, setExpandedData] = useState<any | null>(null);
+  const [expandedData, setExpandedData] = useState<{ images?: string[]; author_name?: string|null; display_at: string; content?: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));

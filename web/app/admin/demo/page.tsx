@@ -931,7 +931,11 @@ function TodoDetailModal({ data, onClose }: { data: { kind:'work'|'field'|'marke
                 <div><span className="text-gray-400">업로드</span> · {(item as MarketingItem).uploadState || '-'}</div>
                 <div className="col-span-2"><span className="text-gray-400">링크</span> · {(item as MarketingItem).uploadLink ? <a href={(item as MarketingItem).uploadLink!} className="underline text-blue-600" target="_blank">열기</a> : '-'}</div>
               </div>
-              <NotesPanel notes={item.notes || []} onAdd={(text)=> {/* demo only */ (item.notes ||= []).push({ id:`n${Date.now()}`, authorId:'u1', text, created_at:new Date().toISOString(), pinned:false}); }} onTogglePin={(id)=> { const n=(item.notes||[]).find((x:any)=> x.id===id); if(n){ n.pinned = !n.pinned; } }} />
+              <NotesPanel
+                notes={(item as MarketingItem).notes || []}
+                onAdd={(text)=> { const mi = item as MarketingItem; (mi.notes ||= []).push({ id:`n${Date.now()}`, authorId:'u1', text, created_at:new Date().toISOString(), pinned:false}); }}
+                onTogglePin={(id)=> { const mi = item as MarketingItem; const n=(mi.notes||[]).find((x)=> x.id===id); if(n){ n.pinned = !n.pinned; } }}
+              />
             </>
           )}
           <div className="flex items-center gap-2">
