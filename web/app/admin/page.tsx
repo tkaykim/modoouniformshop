@@ -505,7 +505,7 @@ function ManualCreate({ onCreated, profiles, kinds }: { onCreated: (row: ManualR
   const [saving, setSaving] = useState(false);
   async function save() {
     setSaving(true);
-    const payload: any = {
+    const payload = {
       session_id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36),
       name: name || null,
       contact: contact || null,

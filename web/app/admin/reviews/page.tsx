@@ -19,9 +19,10 @@ export default function AdminReviewsPage() {
   const [form, setForm] = useState<NewReview>({ rating: 5, author_name: "", title: "", content: "", images: [], display_at: toKstDateTimeLocalString(new Date()) });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [list, setList] = useState<any[]>([]);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
+  type ReviewRow = { id:string; title:string; rating:number; author_name?:string|null; display_at:string; view_count?:number|null };
+  const [list, setList] = useState<ReviewRow[]>([]);
+  const [editing, setEditing] = useState<ReviewRow | null>(null);
+  const [editForm, setEditForm] = useState<Partial<ReviewRow>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedData, setExpandedData] = useState<any | null>(null);
 
@@ -97,16 +98,16 @@ export default function AdminReviewsPage() {
     if (!error) setList(prev => prev.filter(r => r.id !== id));
   }
 
-  function openEdit(r: any) {
+  function openEdit(r: ReviewRow) {
     setEditing(r);
-    setEditForm({ title: r.title, content: r.content, rating: r.rating, author_name: r.author_name ?? '', view_count: r.view_count ?? 0 });
+    setEditForm({ title: r.title, rating: r.rating, author_name: r.author_name ?? '', view_count: r.view_count ?? 0 });
   }
 
   async function saveEdit() {
     if (!editing) return;
     const { error } = await supabase.from('reviews').update(editForm).eq('id', editing.id);
     if (!error) {
-      setList(prev => prev.map(x => x.id === editing.id ? { ...x, ...editForm } : x));
+      setList(prev => prev.map(x => x.id === editing.id ? { ...x, ...(editForm as ReviewRow) } : x));
       setEditing(null);
     }
   }
@@ -209,15 +210,15 @@ export default function AdminReviewsPage() {
               <button className="px-2 py-1 border rounded" onClick={()=> setEditing(null)}>닫기</button>
             </div>
             <label className="block text-sm">제목</label>
-            <input className="w-full border rounded px-2 py-1 text-sm" value={editForm.title ?? ''} onChange={(e)=> setEditForm((f: any)=> ({...f, title: e.target.value}))} />
+            <input className="w-full border rounded px-2 py-1 text-sm" value={editForm.title ?? ''} onChange={(e)=> setEditForm((f)=> ({...f, title: e.target.value}))} />
             <label className="block text-sm">내용</label>
-            <textarea className="w-full border rounded px-2 py-1 text-sm" rows={4} value={editForm.content ?? ''} onChange={(e)=> setEditForm((f: any)=> ({...f, content: e.target.value}))} />
+            <textarea className="w-full border rounded px-2 py-1 text-sm" rows={4} value={(editForm as any).content ?? ''} onChange={(e)=> setEditForm((f)=> ({...f, content: e.target.value as any}))} />
             <label className="block text-sm">별점</label>
-            <input type="number" min={0} max={5} className="w-full border rounded px-2 py-1 text-sm" value={editForm.rating ?? 0} onChange={(e)=> setEditForm((f: any)=> ({...f, rating: Number(e.target.value)}))} />
+            <input type="number" min={0} max={5} className="w-full border rounded px-2 py-1 text-sm" value={editForm.rating ?? 0} onChange={(e)=> setEditForm((f)=> ({...f, rating: Number(e.target.value)}))} />
             <label className="block text-sm">조회수</label>
-            <input type="number" min={0} className="w-full border rounded px-2 py-1 text-sm" value={editForm.view_count ?? 0} onChange={(e)=> setEditForm((f: any)=> ({...f, view_count: Math.max(0, Number(e.target.value))}))} />
+            <input type="number" min={0} className="w-full border rounded px-2 py-1 text-sm" value={editForm.view_count ?? 0} onChange={(e)=> setEditForm((f)=> ({...f, view_count: Math.max(0, Number(e.target.value))}))} />
             <label className="block text-sm">작성자명</label>
-            <input className="w-full border rounded px-2 py-1 text-sm" value={editForm.author_name ?? ''} onChange={(e)=> setEditForm((f: any)=> ({...f, author_name: e.target.value}))} />
+            <input className="w-full border rounded px-2 py-1 text-sm" value={editForm.author_name ?? ''} onChange={(e)=> setEditForm((f)=> ({...f, author_name: e.target.value}))} />
             <div className="flex justify-end gap-2 pt-2">
               <button className="px-3 py-2 border rounded-full bg-white" onClick={()=> setEditing(null)}>취소</button>
               <button className="px-3 py-2 rounded-full" style={{ background: '#0052cc', color: 'white' }} onClick={saveEdit}>저장</button>
