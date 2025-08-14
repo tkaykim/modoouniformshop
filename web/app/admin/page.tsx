@@ -148,10 +148,10 @@ export default function AdminPage() {
       // 전체관리자는 전체 회원 목록, 매니저는 본인만
       if (admin) {
         const { data: users } = await supabase.rpc('list_users_admin');
-        setProfiles(((users as any[]) || []).map(u => ({ id: u.id, display_name: u.display_name || u.email?.split('@')[0] || '', role: u.role })));
+        setProfiles((Array.isArray(users) ? users : []).map((u: { id:string; display_name?:string|null; email?:string|null; role:'admin'|'agent' }) => ({ id: u.id, display_name: u.display_name || u.email?.split('@')[0] || '', role: u.role })));
       } else if (uid) {
         const { data: profSelf } = await supabase.from('profiles').select('id, display_name, role').eq('id', uid).single();
-        setProfiles(profSelf ? [profSelf as Profile] : []);
+        setProfiles(profSelf ? [profSelf as unknown as Profile] : []);
       }
       setLoading(false);
     })();
@@ -331,7 +331,18 @@ export default function AdminPage() {
         </div>
         {manualOpen && (
           <div className="mt-3">
-            <ManualCreate onCreated={(row)=> setInquiries((prev)=> [row, ...prev])} profiles={profiles} kinds={kindOptions} />
+            <ManualCreate onCreated={(row)=> setInquiries((prev)=> [{
+              id: crypto.randomUUID(),
+              created_at: new Date().toISOString(),
+              status: 'new',
+              name: row.name || '-',
+              contact: row.contact || '',
+              inquiry_kind: row.inquiry_kind || '-',
+              quantity: row.quantity ?? null,
+              assignee: row.assignee || null,
+              source: row.source || '-',
+              admin_notes: ''
+            } as Inquiry, ...prev])} profiles={profiles} kinds={kindOptions} />
           </div>
         )}
       </div>
@@ -381,7 +392,7 @@ export default function AdminPage() {
                       {new Date(q.created_at).toLocaleString("ko-KR")}
                     </td>
                     <td className="px-4 py-3">
-                      <select className="border rounded px-2 py-1 bg-white" defaultValue={q.status || 'new'} onChange={(e)=> updateInquiry(q.id, { status: e.target.value } as any)}>
+          <select className="border rounded px-2 py-1 bg-white" defaultValue={q.status || 'new'} onChange={(e)=> updateInquiry(q.id, { status: e.target.value as Inquiry['status'] })}>
                         <option value="new">미답변</option>
                         <option value="in_progress">진행중</option>
                         <option value="answered">답변완료</option>
@@ -393,7 +404,7 @@ export default function AdminPage() {
                     <td className="px-4 py-3">{q.inquiry_kind || "-"}</td>
                     <td className="px-4 py-3">{q.quantity ?? "-"}</td>
                     <td className="px-4 py-3">
-                      <select className="border rounded px-2 py-1 bg-white" defaultValue={q.assignee || ''} onChange={(e)=> updateInquiry(q.id, { assignee: e.target.value || null } as any)}>
+          <select className="border rounded px-2 py-1 bg-white" defaultValue={q.assignee || ''} onChange={(e)=> updateInquiry(q.id, { assignee: e.target.value || null })}>
                         <option value="">미지정</option>
                         {profiles.map((p)=> (
                           <option key={p.id} value={p.id}>{p.display_name || p.id.slice(0,6)}</option>
@@ -401,7 +412,7 @@ export default function AdminPage() {
                       </select>
                     </td>
                     <td className="px-4 py-3">
-                      <select className="border rounded px-2 py-1 bg-white" defaultValue={q.source || ''} onChange={(e)=> updateInquiry(q.id, { source: (e.target.value || null) as any })}>
+          <select className="border rounded px-2 py-1 bg-white" defaultValue={q.source || ''} onChange={(e)=> updateInquiry(q.id, { source: e.target.value || null })}>
                         <option value="">-</option>
                         <option>네이버 스마트스토어</option>
                         <option>카카오톡채널</option>
@@ -483,7 +494,8 @@ export default function AdminPage() {
   );
 }
 
-function ManualCreate({ onCreated, profiles, kinds }: { onCreated: (row: any)=> void; profiles: Profile[]; kinds: string[] }) {
+type ManualRow = { name?: string; contact?: string; inquiry_kind?: string; quantity?: number; source?: string; assignee?: string|null };
+function ManualCreate({ onCreated, profiles, kinds }: { onCreated: (row: ManualRow)=> void; profiles: Profile[]; kinds: string[] }) {
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
   const [inquiryKind, setInquiryKind] = useState('');

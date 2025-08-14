@@ -86,7 +86,7 @@ export default function DemoAdminPage() {
   const [activeTab, setActiveTab] = useState<'overview'|'sales'|'finance'|'goals'|'operations'|'tasks'|'channels'|'manager'|'admin'>('overview');
   const [period, setPeriod] = useState<'7d'|'30d'|'90d'>('30d');
   
-  const [detailModal, setDetailModal] = useState<null | { kind: 'work'|'field'|'marketing'; item: any }>(null);
+  const [detailModal, setDetailModal] = useState<null | { kind: 'work'|'field'|'marketing'; item: WorkItem | FieldSalesItem | MarketingItem }>(null);
   const [taskAssigneeFilter, setTaskAssigneeFilter] = useState<string>('');
   const [taskQuery, setTaskQuery] = useState<string>('');
   const [workItems, setWorkItems] = useState<WorkItem[]>(() => {
@@ -208,7 +208,7 @@ export default function DemoAdminPage() {
             ].map(it=> (
               <button
                 key={it.k}
-                onClick={()=> setActiveTab(it.k as any)}
+                onClick={()=> setActiveTab(it.k as typeof activeTab)}
                 className={`w-full text-left px-3 py-2 rounded-xl transition-colors ${activeTab===it.k? 'text-white' : 'text-gray-700 hover:bg-gray-50'}`}
                 style={activeTab===it.k? { background:'linear-gradient(135deg,#0052cc,#00c2ff)' } : {}}
               >
@@ -232,7 +232,7 @@ export default function DemoAdminPage() {
                 {k:'30d',t:'최근 30일'},
                 {k:'90d',t:'최근 90일'},
               ].map(it=> (
-                <button key={it.k} onClick={()=> setPeriod(it.k as any)} className={`px-3 py-2 text-sm ${period===it.k? 'text-white' : 'bg-white hover:bg-gray-50'}`} style={period===it.k? { background:'#0052cc' } : {}}>{it.t}</button>
+                <button key={it.k} onClick={()=> setPeriod(it.k as typeof period)} className={`px-3 py-2 text-sm ${period===it.k? 'text-white' : 'bg-white hover:bg-gray-50'}`} style={period===it.k? { background:'#0052cc' } : {}}>{it.t}</button>
               ))}
             </div>
           </div>
@@ -877,7 +877,7 @@ function KpiTile({ label, value, tone }: { label: string; value: string; tone: s
   );
 }
 
-function TodoDetailModal({ data, onClose }: { data: { kind:'work'|'field'|'marketing'; item: any }; onClose: ()=>void }){
+function TodoDetailModal({ data, onClose }: { data: { kind:'work'|'field'|'marketing'; item: WorkItem | FieldSalesItem | MarketingItem }; onClose: ()=>void }){
   const { kind, item } = data;
   const [note, setNote] = useState<string>('');
   const [assignee, setAssignee] = useState<string>(item.assigneeId || '');
@@ -890,46 +890,46 @@ function TodoDetailModal({ data, onClose }: { data: { kind:'work'|'field'|'marke
           <button className="text-sm px-3 py-1 rounded-full border" onClick={onClose}>닫기</button>
         </div>
         <div className="p-5 text-sm space-y-3">
-          {kind==='work' && (
+          {kind==='work' && (item as WorkItem) && (
             <>
               <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-gray-400">주문번호</span> · {item.orderNo}</div>
-                <div><span className="text-gray-400">마감</span> · {item.due}</div>
-                <div><span className="text-gray-400">고객</span> · {item.customer}</div>
-                <div><span className="text-gray-400">채널</span> · {item.channel}</div>
-                <div className="col-span-2"><span className="text-gray-400">금액</span> · ₩ {item.amount?.toLocaleString?.() || item.amount}</div>
+                <div><span className="text-gray-400">주문번호</span> · {(item as WorkItem).orderNo}</div>
+                <div><span className="text-gray-400">마감</span> · {(item as WorkItem).due}</div>
+                <div><span className="text-gray-400">고객</span> · {(item as WorkItem).customer}</div>
+                <div><span className="text-gray-400">채널</span> · {(item as WorkItem).channel}</div>
+                <div className="col-span-2"><span className="text-gray-400">금액</span> · ₩ {(item as WorkItem).amount?.toLocaleString?.() || (item as WorkItem).amount}</div>
               </div>
               <div>
                 <div className="text-gray-400">메모</div>
-                <div className="mt-1 p-3 rounded-xl bg-gray-50">{item.memo || '-'}</div>
+                <div className="mt-1 p-3 rounded-xl bg-gray-50">{(item as WorkItem).memo || '-'}</div>
               </div>
             </>
           )}
-          {kind==='field' && (
+          {kind==='field' && (item as FieldSalesItem) && (
             <>
               <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-gray-400">상호</span> · {item.bizName}</div>
-                <div><span className="text-gray-400">카테고리</span> · {item.category}</div>
-                <div className="col-span-2"><span className="text-gray-400">주소</span> · {item.address}</div>
-                <div><span className="text-gray-400">예정일</span> · {item.visitPlanned}</div>
-                <div><span className="text-gray-400">결과</span> · {item.outcome || '-'}</div>
+                <div><span className="text-gray-400">상호</span> · {(item as FieldSalesItem).bizName}</div>
+                <div><span className="text-gray-400">카테고리</span> · {(item as FieldSalesItem).category}</div>
+                <div className="col-span-2"><span className="text-gray-400">주소</span> · {(item as FieldSalesItem).address}</div>
+                <div><span className="text-gray-400">예정일</span> · {(item as FieldSalesItem).visitPlanned}</div>
+                <div><span className="text-gray-400">결과</span> · {(item as FieldSalesItem).outcome || '-'}</div>
               </div>
               <div>
                 <div className="text-gray-400">메모</div>
-                <div className="mt-1 p-3 rounded-xl bg-gray-50">{item.memo || '-'}</div>
+                <div className="mt-1 p-3 rounded-xl bg-gray-50">{(item as FieldSalesItem).memo || '-'}</div>
               </div>
             </>
           )}
-          {kind==='marketing' && (
+          {kind==='marketing' && (item as MarketingItem) && (
             <>
               <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-gray-400">주제</span> · {item.topic}</div>
-                <div><span className="text-gray-400">형식</span> · {item.format}</div>
-                <div><span className="text-gray-400">카테고리</span> · {item.category}</div>
-                <div className="col-span-2"><span className="text-gray-400">레퍼런스</span> · {item.reference || '-'}</div>
-                <div><span className="text-gray-400">편집</span> · {item.editState || '-'}</div>
-                <div><span className="text-gray-400">업로드</span> · {item.uploadState || '-'}</div>
-                <div className="col-span-2"><span className="text-gray-400">링크</span> · {item.uploadLink ? <a href={item.uploadLink} className="underline text-blue-600" target="_blank">열기</a> : '-'}</div>
+                <div><span className="text-gray-400">주제</span> · {(item as MarketingItem).topic}</div>
+                <div><span className="text-gray-400">형식</span> · {(item as MarketingItem).format}</div>
+                <div><span className="text-gray-400">카테고리</span> · {(item as MarketingItem).category}</div>
+                <div className="col-span-2"><span className="text-gray-400">레퍼런스</span> · {(item as MarketingItem).reference || '-'}</div>
+                <div><span className="text-gray-400">편집</span> · {(item as MarketingItem).editState || '-'}</div>
+                <div><span className="text-gray-400">업로드</span> · {(item as MarketingItem).uploadState || '-'}</div>
+                <div className="col-span-2"><span className="text-gray-400">링크</span> · {(item as MarketingItem).uploadLink ? <a href={(item as MarketingItem).uploadLink!} className="underline text-blue-600" target="_blank">열기</a> : '-'}</div>
               </div>
               <NotesPanel notes={item.notes || []} onAdd={(text)=> {/* demo only */ (item.notes ||= []).push({ id:`n${Date.now()}`, authorId:'u1', text, created_at:new Date().toISOString(), pinned:false}); }} onTogglePin={(id)=> { const n=(item.notes||[]).find((x:any)=> x.id===id); if(n){ n.pinned = !n.pinned; } }} />
             </>

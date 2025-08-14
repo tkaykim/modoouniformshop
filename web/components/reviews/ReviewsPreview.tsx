@@ -92,7 +92,7 @@ export function ReviewsPreview({ onOpenAll }: { onOpenAll: () => void }) {
             };
             raf = requestAnimationFrame(step);
             return () => cancelAnimationFrame(raf);
-        }, [items.length, reverse]);
+        }, [items.length, reverse, dir]);
 
         useEffect(() => {
             const cont = containerRef.current;
