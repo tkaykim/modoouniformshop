@@ -994,7 +994,8 @@ function statusBadge(s: Inquiry["status"]) {
   return <span className="px-2 py-1 rounded-full text-xs" style={{ background:t.bg, color:t.color }}>{t.label}</span>;
 }
 
-function Input({ label, ...rest }: any) {
+type InputProps = React.InputHTMLAttributes<HTMLInputElement> & { label: string };
+function Input({ label, ...rest }: InputProps) {
   return (
     <div>
       <label className="block text-xs text-gray-500">{label}</label>
