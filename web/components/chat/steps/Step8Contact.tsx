@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 import { BubbleQuestion } from "@/components/chat/BubbleQuestion";
 import { BubbleAnswer } from "@/components/chat/BubbleAnswer";
 import { showToast } from "@/lib/toast";
-import { finalizeInquiry } from "@/lib/api";
+import { finalizeInquiry, sendToGoogleAppsScript, type GoogleAppsScriptPayload } from "@/lib/api";
 
 export function Step8({ isCurrent = true }: { isCurrent?: boolean }) {
   const { setAnswer, loading, markDirty, dirtySteps, answers, sessionId, reset } = useChatStore();
@@ -37,12 +37,55 @@ export function Step8({ isCurrent = true }: { isCurrent?: boolean }) {
       } catch (e) {
         logger.error("ui:finalize:error", e);
       }
+
+      // Google Apps Script로 이메일 알림 전송
+      try {
+        const appsScriptData = prepareAppsScriptData();
+        await sendToGoogleAppsScript(appsScriptData);
+        logger.event("ui:apps-script:success", { appsScriptData });
+      } catch (e) {
+        logger.error("ui:apps-script:error", e);
+        // 에러가 발생해도 메인 플로우는 계속 진행
+      }
+
       setShowComplete(true);
       setTimeout(() => {
         reset();
         if (typeof window !== 'undefined') window.location.reload();
       }, 5000);
     }
+  };
+
+  const prepareAppsScriptData = (): GoogleAppsScriptPayload => {
+    // 모든 단계의 답변을 수집하여 Google Apps Script 형식으로 변환
+    const step1 = answers?.[1] as { inquiry_kind?: string } | undefined;
+    const step2 = answers?.[2] as { priorities?: { key: string; rank: number }[] } | undefined;
+    const step3 = answers?.[3] as { items?: string[]; item_custom?: string } | undefined;
+    const step4 = answers?.[4] as { quantity?: number } | undefined;
+    const step6 = answers?.[6] as { needed_date?: string } | undefined;
+
+    // 제품 정보 조합
+    const inquiryKind = step1?.inquiry_kind || "문의";
+    const priorities = step2?.priorities?.map(p => `${p.rank}. ${p.key}`).join(", ") || "";
+    const items = step3?.items?.join(", ") || "";
+    const customItem = step3?.item_custom || "";
+    const product = [inquiryKind, items, customItem].filter(Boolean).join(" / ");
+    
+    // 추가 정보 조합
+    const extraInfo = [
+      priorities && `우선순위: ${priorities}`,
+      step6?.needed_date && `희망 납기일: ${step6.needed_date}`,
+    ].filter(Boolean).join("\n");
+
+    return {
+      groupName: "", // 현재 단계에서는 수집하지 않음
+      name,
+      contact,
+      product,
+      quantity: step4?.quantity?.toString() || "",
+      date: step6?.needed_date || "",
+      extra: extraInfo,
+    };
   };
 
   return (

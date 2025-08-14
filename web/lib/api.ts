@@ -51,3 +51,48 @@ export async function finalizeInquiry(sessionId: string) {
   return (await res.json()) as { inquiryId: string; status: string };
 }
 
+export type GoogleAppsScriptPayload = {
+  groupName?: string;
+  name: string;
+  contact: string;
+  product?: string;
+  quantity?: string;
+  date?: string;
+  extra?: string;
+};
+
+export async function sendToGoogleAppsScript(data: GoogleAppsScriptPayload) {
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7tgQIdGfqPdhhxS2VJBaOz80e34QxrHtak9118QDE1Zb4um1IhxbnKehM62NUzxq6/exec";
+  
+  try {
+    console.info("[api] sendToGoogleAppsScript:request", { data });
+    
+    // FormData 방식으로 전송 (Google Apps Script doPost 호환)
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, String(value));
+      }
+    });
+
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: formData,
+    });
+    
+    console.info("[api] sendToGoogleAppsScript:response", { status: res.status });
+    
+    if (!res.ok) {
+      throw new Error(`Google Apps Script failed: ${res.status}`);
+    }
+    
+    const result = await res.json();
+    console.info("[api] sendToGoogleAppsScript:success", { result });
+    return result;
+  } catch (error) {
+    console.error("[api] sendToGoogleAppsScript:error", error);
+    // 에러가 발생해도 메인 플로우는 차단하지 않음
+    throw error;
+  }
+}
+
