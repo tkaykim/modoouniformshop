@@ -280,6 +280,76 @@ export default function AdminProductsPage() {
     }
   };
 
+  // Ensure product exists when navigating to other tabs during creation
+  const ensureProductPersisted = async (goto: 'options' | 'content') => {
+    if (selectedProduct) {
+      setActiveTab(goto);
+      return;
+    }
+    // Create minimal product first
+    setSubmitting(true);
+    try {
+      const submitData = {
+        ...formData,
+        sale_price: formData.sale_price > 0 ? formData.sale_price : null,
+        category_id: formData.category_id || null,
+        stock_quantity: unlimitedStock ? UNLIMITED_STOCK : formData.stock_quantity,
+      } as any;
+
+      const { data: created, error } = await supabase
+        .from('products')
+        .insert([submitData])
+        .select('id, name, slug, base_price, sale_price, is_active, is_featured, category_id')
+        .single();
+      if (error) throw error;
+      const newId = created!.id as string;
+
+      // Handle primary image if provided in basic tab
+      if (primaryImageFile || primaryImageUrl.trim()) {
+        let finalUrl = primaryImageUrl.trim();
+        if (primaryImageFile) {
+          const ext = primaryImageFile.name.split('.').pop() || 'jpg';
+          const path = `products/${newId}/images/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+          const fd = new FormData();
+          fd.append('file', primaryImageFile);
+          fd.append('path', path);
+          const res = await fetch('/api/storage/upload', { method: 'POST', body: fd });
+          if (!res.ok) throw new Error(await res.text());
+          const { url } = await res.json();
+          finalUrl = url;
+        }
+        if (finalUrl) {
+          await supabase.from('product_images').insert([{ product_id: newId, url: finalUrl, alt_text: formData.name, sort_order: 0, is_primary: true }]);
+        }
+      }
+
+      // Set state to editing mode for further tab edits
+      const minimalProduct: Product = {
+        id: newId,
+        name: formData.name,
+        slug: formData.slug,
+        description: formData.description,
+        short_description: formData.short_description,
+        base_price: formData.base_price,
+        sale_price: formData.sale_price || 0,
+        stock_quantity: unlimitedStock ? UNLIMITED_STOCK : formData.stock_quantity,
+        is_active: formData.is_active,
+        is_featured: formData.is_featured,
+        category: categories.find(c => c.id === formData.category_id) ? { id: formData.category_id, name: categories.find(c => c.id === formData.category_id)!.name } as any : undefined,
+        images: [],
+      };
+      setEditingProduct(minimalProduct);
+      setSelectedProduct(minimalProduct);
+      setActiveTab(goto);
+      await loadProducts();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`초기 저장 실패: ${msg}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDelete = async (product: Product) => {
     if (!confirm(`"${product.name}" 상품을 삭제하시겠습니까?`)) return;
 
@@ -576,24 +646,24 @@ export default function AdminProductsPage() {
 
         {/* Products Table */}
         <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8">순서</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상품</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider w-8">순서</th>
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">상품</th>
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">
                   카테고리
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">
                   가격
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">
                   재고
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">
                   상태
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">
                   관리
                 </th>
               </tr>
@@ -601,7 +671,7 @@ export default function AdminProductsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={6} className="px-3 md:px-6 py-4 text-center text-gray-500">
                     등록된 상품이 없습니다.
                   </td>
                 </tr>
@@ -635,34 +705,33 @@ export default function AdminProductsPage() {
                       })();
                     }}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-400 cursor-grab">⋮⋮</td>
-                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => openProductModal(product)}>
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap text-gray-400 cursor-grab">⋮⋮</td>
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => openProductModal(product)}>
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-16 w-16">
+                        <div className="flex-shrink-0 h-12 w-12 md:h-16 md:w-16">
                           {product.images?.find(img => img.is_primary)?.url ? (
                             <Image
                               src={product.images.find(img => img.is_primary)!.url}
                               alt={product.name}
-                              width={64}
-                              height={64}
-                              className="h-16 w-16 rounded-lg object-cover"
+                              width={64} height={64}
+                              className="h-12 w-12 md:h-16 md:w-16 rounded-lg object-cover"
                             />
                           ) : (
-                            <div className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                            <div className="h-12 w-12 md:h-16 md:w-16 rounded-lg bg-gray-200 flex items-center justify-center">
                               <span className="text-gray-400 text-xs">이미지 없음</span>
                             </div>
                           )}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          <div className="text-sm text-gray-500">{product.short_description}</div>
+                        <div className="ml-3 md:ml-4">
+                          <div className="text-sm md:text-base font-medium text-gray-900 line-clamp-1">{product.name}</div>
+                          <div className="text-xs md:text-sm text-gray-500 line-clamp-1">{product.short_description}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {product.category?.name || "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div>
                         {product.sale_price && product.sale_price < product.base_price ? (
                           <>
@@ -681,12 +750,12 @@ export default function AdminProductsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <span className={product.stock_quantity <= 0 ? "text-red-600" : ""}>
                         {product.stock_quantity}개
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                       <div className="flex flex-col space-y-1">
                         <button
                           onClick={() => toggleProductStatus(product, 'is_active')}
@@ -705,8 +774,8 @@ export default function AdminProductsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                    <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleEdit(product)}
                           className="text-blue-600 hover:text-blue-900"
@@ -725,12 +794,7 @@ export default function AdminProductsPage() {
                         >
                           옵션관리
                         </button>
-                        <button
-                          onClick={() => { openProductModal(product); setActiveTab('images'); }}
-                          className="text-purple-600 hover:text-purple-900"
-                        >
-                          이미지
-                        </button>
+                        {/* 이미지 탭 제거됨: 기본정보 탭에서 대표 이미지 관리 */}
                         <button
                           onClick={() => { openProductModal(product); setActiveTab('content'); }}
                           className="text-teal-600 hover:text-teal-900"
@@ -767,8 +831,8 @@ export default function AdminProductsPage() {
             <div className="px-6 pt-3">
               <div className="flex gap-2 border-b">
                 <button className={`px-3 py-2 text-sm ${activeTab==='basic'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=>setActiveTab('basic')}>기본정보</button>
-                <button className={`px-3 py-2 text-sm ${activeTab==='options'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=> selectedProduct ? setActiveTab('options') : null} disabled={!selectedProduct}>옵션</button>
-                <button className={`px-3 py-2 text-sm ${activeTab==='content'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=> selectedProduct ? setActiveTab('content') : null} disabled={!selectedProduct}>상세페이지</button>
+                <button className={`px-3 py-2 text-sm ${activeTab==='options'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=> selectedProduct ? setActiveTab('options') : ensureProductPersisted('options')}>옵션</button>
+                <button className={`px-3 py-2 text-sm ${activeTab==='content'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=> selectedProduct ? setActiveTab('content') : ensureProductPersisted('content')}>상세페이지</button>
               </div>
             </div>
             <div className="p-6 overflow-auto">
@@ -904,17 +968,12 @@ export default function AdminProductsPage() {
                   </div>
                 </form>
               )}
-              {activeTab === 'options' && (
+              {activeTab === 'options' && selectedProduct && (
                 <div className="h-[70vh]">
                   <iframe className="w-full h-full" src={`/admin/products/${selectedProduct.id}/options`} />
                 </div>
               )}
-              {activeTab === 'images' && (
-                <div className="h-[70vh]">
-                  <iframe className="w-full h-full" src={`/admin/products/${selectedProduct.id}/images`} />
-                </div>
-              )}
-              {activeTab === 'content' && (
+              {activeTab === 'content' && selectedProduct && (
                 <div className="h-[70vh]">
                   <iframe className="w-full h-full" src={`/admin/products/${selectedProduct.id}/content`} />
                 </div>

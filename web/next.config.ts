@@ -32,6 +32,11 @@ const nextConfig: NextConfig = {
         hostname: 'cdn-saas-web-203-48.cdn-nhncommerce.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'modoouniform.com',
+        pathname: '/**',
+      },
     ],
     minimumCacheTTL: 60,
   },

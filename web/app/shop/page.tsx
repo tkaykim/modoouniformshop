@@ -300,146 +300,15 @@ export default function ShopPage() {
 
       <ChatModal open={openChat} onClose={() => setOpenChat(false)} />
 
-      {/* Hero Section with Carousel */}
-      <section className="relative h-[600px] lg:h-[700px] overflow-hidden bg-[--color-sky-50]">
-        {heroBanners.length > 0 ? (
-          <>
-            {/* Background Images */}
-            {heroBanners.map((banner, index) => (
-              <div
-                key={banner.id}
-                className={`absolute inset-0 transition-opacity duration-1000 ${
-                  index === currentSlide ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                <Image
-                  src={banner.url}
-                  alt={banner.title}
-                  fill
-                  className="object-cover"
-                  priority={index === 0}
-                  unoptimized
-                />
-                <div className="absolute inset-0 bg-black/40"></div>
-              </div>
-            ))}
-
-            {/* Navigation Arrows */}
-            {heroBanners.length > 1 && (
-              <>
-                <button
-                  onClick={() => setCurrentSlide(currentSlide === 0 ? heroBanners.length - 1 : currentSlide - 1)}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white text-[--color-brand] p-3 rounded-full shadow hover:bg-[--color-brand-50] transition-colors"
-                >
-                  <ChevronLeft size={24} />
-                </button>
-                <button
-                  onClick={() => setCurrentSlide((currentSlide + 1) % heroBanners.length)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white text-[--color-brand] p-3 rounded-full shadow hover:bg-[--color-brand-50] transition-colors"
-                >
-                  <ChevronRight size={24} />
-                </button>
-              </>
-            )}
-
-            {/* Dots Navigation */}
-            {heroBanners.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex gap-2">
-                {heroBanners.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentSlide(index)}
-                    className={`w-3 h-3 rounded-full transition-colors ${
-                      index === currentSlide ? 'bg-[--color-brand]' : 'bg-white'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          // Fallback when no banners
-          <div className="bg-gradient-to-br from-[--color-brand] to-[color-mix(in_oklab,var(--color-brand)_80%,black)]">
-            <div className="absolute inset-0 bg-black/10"></div>
-          </div>
-        )}
-
-        {/* Content Overlay */}
-        <div className="absolute inset-0 z-10 flex items-center">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="space-y-8 text-white">
-                <div className="space-y-4">
-                  <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
-                    <span className="block">나만의 단체복</span>
-                    <span className="block text-yellow-300">쉽고 빠르게</span>
-                  </h1>
-                  <p className="text-xl lg:text-2xl text-blue-100 leading-relaxed">
-                    전문 디자이너와 함께하는<br />
-                    고품질 단체복 제작 서비스
-                  </p>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button 
-                    onClick={() => setOpenChat(true)}
-                    className="bg-yellow-400 text-gray-900 px-8 py-4 rounded-full text-lg font-bold hover:bg-yellow-300 transition-colors"
-                  >
-                    무료 견적 받기 →
-                  </button>
-                  <button 
-                    onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="border-2 border-white/80 text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-white hover:text-[--color-brand] transition-colors"
-                  >
-                    상품 둘러보기
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-6 pt-8">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold">1000+</div>
-                    <div className="text-sm text-blue-200">완성 프로젝트</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold">99%</div>
-                    <div className="text-sm text-blue-200">고객 만족도</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold">7일</div>
-                    <div className="text-sm text-blue-200">평균 제작 기간</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
-                  <h3 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
-                    <Target size={24} />
-                    이런 분들께 추천
-                  </h3>
-                  <ul className="space-y-4 text-blue-100">
-                    <li className="flex items-center gap-3">
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                      학교, 동아리 단체복이 필요한 분
-                    </li>
-                    <li className="flex items-center gap-3">
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                      회사 워크샵, 행사용 티셔츠
-                    </li>
-                    <li className="flex items-center gap-3">
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                      스포츠팀 유니폼 제작
-                    </li>
-                    <li className="flex items-center gap-3">
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                      소량 제작도 OK!
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Hero Section: Static single image */}
+      <section className="relative h-[600px] lg:h-[700px] overflow-hidden bg-black">
+        <Image
+          src="https://modoouniform.com/data/skin/front/singgreen_250227/img/banner/067dee3807b22ea9e8f8cbb694d5db35_13869.png"
+          alt="모두의 유니폼 히어로"
+          fill
+          className="object-cover"
+          priority
+        />
       </section>
 
       {/* Categories & Products Section */}
