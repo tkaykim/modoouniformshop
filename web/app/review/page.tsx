@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 import { shimmer } from "@/lib/img";
+import { SiteHeader } from "@/components/SiteHeader";
 
 type Review = {
   id: string;
@@ -127,6 +128,7 @@ export default function ReviewPage() {
 
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-4">
+      <SiteHeader />
       <h1 className="text-xl font-semibold">리뷰</h1>
       {loading && <div className="text-sm text-gray-500">불러오는 중…</div>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

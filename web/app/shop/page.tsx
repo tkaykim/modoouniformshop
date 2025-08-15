@@ -4,7 +4,23 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChatModal } from "@/components/chat/ChatModal";
+import { SiteHeader } from "@/components/SiteHeader";
 import { supabase } from "@/lib/supabaseClient";
+import { 
+  MessageCircle, 
+  Palette, 
+  Shirt, 
+  Truck, 
+  Target, 
+  Zap, 
+  CheckCircle, 
+  Phone,
+  Search,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  Settings
+} from "lucide-react";
 
 interface Product {
   id: string;
@@ -33,6 +49,41 @@ interface Category {
   parent_id?: string;
 }
 
+interface Review {
+  id: string;
+  rating: number;
+  title: string;
+  content: string;
+  images: string[];
+  display_at: string;
+  author_name?: string | null;
+  author?: {
+    display_name?: string;
+  };
+}
+
+interface HeroBanner {
+  id: string;
+  title: string;
+  url: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+const caseStudies = [
+  { id: 1, image: "https://via.placeholder.com/400x300", title: "대학교 학과 단체복", description: "심플하면서도 세련된 디자인", category: "대학교" },
+  { id: 2, image: "https://via.placeholder.com/400x300", title: "회사 워크샵 티셔츠", description: "브랜딩이 돋보이는 기업 단체복", category: "기업" },
+  { id: 3, image: "https://via.placeholder.com/400x300", title: "동아리 후드티", description: "개성 넘치는 동아리 컬러", category: "동아리" },
+  { id: 4, image: "https://via.placeholder.com/400x300", title: "스포츠팀 유니폼", description: "활동성을 고려한 기능성 의류", category: "스포츠" }
+];
+
+const processSteps = [
+  { step: 1, title: "상담 신청", description: "간단한 정보 입력으로 시작", icon: MessageCircle },
+  { step: 2, title: "디자인 협의", description: "전문 디자이너와 1:1 상담", icon: Palette },
+  { step: 3, title: "샘플 확인", description: "실제 샘플로 품질 체크", icon: Shirt },
+  { step: 4, title: "제작 & 배송", description: "고품질 제작 후 빠른 배송", icon: Truck }
+];
+
 export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -41,17 +92,33 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openChat, setOpenChat] = useState(false);
-
-  // use singleton supabase client
+  
+  // Hero carousel state
+  const [heroBanners, setHeroBanners] = useState<HeroBanner[]>([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  
+  // Reviews state
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   useEffect(() => {
     loadCategories();
     loadProducts();
+    loadHeroBanners();
+    loadReviews();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadProducts();
   }, [selectedCategory, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-slide for hero carousel
+  useEffect(() => {
+    if (heroBanners.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroBanners.length);
+    }, 5000); // 5 seconds
+    return () => clearInterval(interval);
+  }, [heroBanners.length]);
 
   const loadCategories = async () => {
     try {
@@ -62,9 +129,76 @@ export default function ShopPage() {
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
-      setCategories(data || []);
+      setCategories((data as unknown as Category[]) || []);
     } catch (err) {
       console.error("카테고리 로드 실패:", err);
+    }
+  };
+
+  const loadHeroBanners = async () => {
+    try {
+      // Use fixed_content table with section_type 'hero'
+      const { data, error } = await supabase
+        .from("fixed_content")
+        .select("id, title, content")
+        .eq("section_type", "hero")
+        .eq("is_active", true)
+        .order("updated_at", { ascending: false });
+
+      if (error) throw error;
+      
+      // Transform content (which contains image URLs) to banners
+      const banners = ((data || []) as Array<{ id: string; title?: string|null; content: string }>).map((item, index) => ({
+        id: String(item.id),
+        title: item.title || "",
+        url: item.content,
+        sort_order: index,
+        is_active: true
+      }));
+      
+      setHeroBanners(banners as HeroBanner[]);
+    } catch (err) {
+      console.error("히어로 배너 로드 실패:", err);
+    }
+  };
+
+  const loadReviews = async () => {
+    try {
+      // 1차 시도: display_at 기준 + 프로필 조인
+      let { data, error } = await supabase
+        .from("reviews")
+        .select(`
+          id,
+          rating,
+          title,
+          content,
+          images,
+          display_at,
+          author_name,
+          author:profiles(display_name)
+        `)
+        .order("display_at", { ascending: false })
+        .limit(24);
+
+      // 조인/정렬 이슈 대비: 2차 시도 (조인 제거 + created_at 기준)
+      if (error || !data || data.length === 0) {
+        const alt = await supabase
+          .from("reviews")
+          .select("id, rating, title, content, images, display_at, author_name")
+          .order("created_at", { ascending: false } as any)
+          .limit(24);
+        if (!alt.error) data = alt.data as any[];
+      }
+
+      const all = (data || []) as Review[];
+      const photoFirst = all.filter(r => Array.isArray(r.images) && r.images.length > 0);
+      const textOnly = all.filter(r => !Array.isArray(r.images) || r.images.length === 0);
+      const prioritized = [...photoFirst, ...textOnly].slice(0, 8);
+      setReviews(prioritized);
+    } catch (err) {
+      // 최종 폴백: 에러시 빈 배열로 세팅
+      console.error("리뷰 로드 실패:", err);
+      setReviews([]);
     }
   };
 
@@ -96,7 +230,7 @@ export default function ShopPage() {
       if (error) throw error;
 
       // Transform data to match our interface
-      const transformedProducts: Product[] = (data || []).map((item: {
+      const transformedProducts: Product[] = ((data as unknown) as Array<{
         id: string;
         name: string;
         slug: string;
@@ -107,7 +241,7 @@ export default function ShopPage() {
         category?: { id: string; name: string; slug: string };
         images?: Array<{ url: string; is_primary: boolean }>;
         options?: Array<{ price_modifier?: number }>;
-      }) => {
+      }>).map((item) => {
         const primaryImage = item.images?.find((img) => img.is_primary)?.url || item.images?.[0]?.url;
         
         // Calculate price range from options
@@ -160,195 +294,526 @@ export default function ShopPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">모두의 유니폼 쇼핑몰</h1>
-              <p className="text-gray-600 mt-1">단체복과 굿즈를 쉽게 주문하세요</p>
-            </div>
-            <button
-              onClick={() => setOpenChat(true)}
-              className="text-blue-600 hover:text-blue-800 font-medium"
-            >
-              상담하기 →
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-white">
+      {/* Unified Header */}
+      <SiteHeader />
 
       <ChatModal open={openChat} onClose={() => setOpenChat(false)} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search and Filter */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
+      {/* Hero Section with Carousel */}
+      <section className="relative h-[600px] lg:h-[700px] overflow-hidden bg-[--color-sky-50]">
+        {heroBanners.length > 0 ? (
+          <>
+            {/* Background Images */}
+            {heroBanners.map((banner, index) => (
+              <div
+                key={banner.id}
+                className={`absolute inset-0 transition-opacity duration-1000 ${
+                  index === currentSlide ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <Image
+                  src={banner.url}
+                  alt={banner.title}
+                  fill
+                  className="object-cover"
+                  priority={index === 0}
+                  unoptimized
+                />
+                <div className="absolute inset-0 bg-black/40"></div>
+              </div>
+            ))}
+
+            {/* Navigation Arrows */}
+            {heroBanners.length > 1 && (
+              <>
+                <button
+                  onClick={() => setCurrentSlide(currentSlide === 0 ? heroBanners.length - 1 : currentSlide - 1)}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white text-[--color-brand] p-3 rounded-full shadow hover:bg-[--color-brand-50] transition-colors"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button
+                  onClick={() => setCurrentSlide((currentSlide + 1) % heroBanners.length)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white text-[--color-brand] p-3 rounded-full shadow hover:bg-[--color-brand-50] transition-colors"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </>
+            )}
+
+            {/* Dots Navigation */}
+            {heroBanners.length > 1 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+                {heroBanners.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentSlide(index)}
+                    className={`w-3 h-3 rounded-full transition-colors ${
+                      index === currentSlide ? 'bg-[--color-brand]' : 'bg-white'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          // Fallback when no banners
+          <div className="bg-gradient-to-br from-[--color-brand] to-[color-mix(in_oklab,var(--color-brand)_80%,black)]">
+            <div className="absolute inset-0 bg-black/10"></div>
+          </div>
+        )}
+
+        {/* Content Overlay */}
+        <div className="absolute inset-0 z-10 flex items-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-8 text-white">
+                <div className="space-y-4">
+                  <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
+                    <span className="block">나만의 단체복</span>
+                    <span className="block text-yellow-300">쉽고 빠르게</span>
+                  </h1>
+                  <p className="text-xl lg:text-2xl text-blue-100 leading-relaxed">
+                    전문 디자이너와 함께하는<br />
+                    고품질 단체복 제작 서비스
+                  </p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={() => setOpenChat(true)}
+                    className="bg-yellow-400 text-gray-900 px-8 py-4 rounded-full text-lg font-bold hover:bg-yellow-300 transition-colors"
+                  >
+                    무료 견적 받기 →
+                  </button>
+                  <button 
+                    onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="border-2 border-white/80 text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-white hover:text-[--color-brand] transition-colors"
+                  >
+                    상품 둘러보기
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6 pt-8">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold">1000+</div>
+                    <div className="text-sm text-blue-200">완성 프로젝트</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold">99%</div>
+                    <div className="text-sm text-blue-200">고객 만족도</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold">7일</div>
+                    <div className="text-sm text-blue-200">평균 제작 기간</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
+                  <h3 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
+                    <Target size={24} />
+                    이런 분들께 추천
+                  </h3>
+                  <ul className="space-y-4 text-blue-100">
+                    <li className="flex items-center gap-3">
+                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                      학교, 동아리 단체복이 필요한 분
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                      회사 워크샵, 행사용 티셔츠
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                      스포츠팀 유니폼 제작
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                      소량 제작도 OK!
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Categories & Products Section */}
+      <section id="products" className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">인기 상품</h2>
+            <p className="text-lg text-gray-600">다양한 스타일의 단체복을 만나보세요</p>
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
+            <button
+              className={`px-6 py-3 rounded-full border-2 font-medium transition-colors ${!selectedCategory 
+                ? 'bg-[--color-brand] text-white border-[--color-brand]' 
+                : 'bg-white text-gray-700 border-gray-300 hover:border-[--color-brand]'
+              }`}
+              onClick={() => setSelectedCategory(null)}
+            >
+              전체
+            </button>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                className={`px-6 py-3 rounded-full border-2 font-medium transition-colors whitespace-nowrap ${selectedCategory === c.slug
+                  ? 'bg-[--color-brand] text-white border-[--color-brand]'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-[--color-brand]'
+                }`}
+                onClick={() => setSelectedCategory(c.slug)}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="max-w-md mx-auto mb-12">
+            <div className="relative">
               <input
                 type="text"
                 placeholder="상품명으로 검색..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-6 py-3 pl-12 border border-gray-300 rounded-full focus:ring-2 focus:ring-[--color-brand] focus:border-transparent text-lg"
               />
+              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <Search size={20} />
+              </div>
             </div>
-            
-            {/* Category Filter */}
-            <div className="sm:w-64">
-              <select
-                value={selectedCategory || ""}
-                onChange={(e) => setSelectedCategory(e.target.value || null)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">모든 카테고리</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.slug}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+          </div>
+
+          {/* Products Grid */}
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-lg overflow-hidden animate-pulse">
+                  <div className="relative w-full pt-[133%] bg-gray-300"></div>
+                  <div className="p-6">
+                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-300 rounded mb-4"></div>
+                    <div className="h-5 bg-gray-300 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-gray-500 text-xl mb-4">
+                {searchQuery || selectedCategory
+                  ? "검색 조건에 맞는 상품이 없습니다."
+                  : "등록된 상품이 없습니다."}
+              </div>
+              {(searchQuery || selectedCategory) && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory(null);
+                  }}
+                  className="text-[--color-brand] hover:opacity-80 font-medium text-lg"
+                >
+                  전체 상품 보기
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {products.map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/shop/${product.slug}`}
+                  className="group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                >
+                  {/* Product Image */}
+                  <div className="relative w-full pt-[133%] bg-gray-100 overflow-hidden">
+                    {product.primary_image ? (
+                      <Image
+                        src={product.primary_image}
+                        alt={product.name}
+                        fill
+                        className="object-cover absolute inset-0 group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center absolute inset-0 text-gray-400">
+                        이미지 없음
+                      </div>
+                    )}
+                    
+                    {/* Sale Badge */}
+                    {product.sale_price && product.sale_price < product.base_price && (
+                      <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                        SALE
+                      </div>
+                    )}
+
+                    {/* Hover Actions */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setOpenChat(true);
+                          }}
+                          className="bg-white text-gray-900 px-4 py-2 rounded-full font-medium hover:bg-gray-100"
+                        >
+                          견적문의
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="p-6">
+                    {/* Category */}
+                    {product.category && (
+                      <div className="text-sm text-[--color-brand] font-medium mb-2">
+                        {product.category.name}
+                      </div>
+                    )}
+
+                    {/* Product Name */}
+                    <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 text-lg">
+                      {product.name}
+                    </h3>
+
+                    {/* Short Description */}
+                    {product.short_description && (
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                        {product.short_description}
+                      </p>
+                    )}
+
+                    {/* Price */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        {product.sale_price && product.sale_price < product.base_price ? (
+                          <div>
+                            <span className="text-xl font-bold text-red-600">
+                              {getPriceDisplay(product)}
+                            </span>
+                            <span className="text-sm text-gray-500 line-through ml-2">
+                              {formatPrice(product.base_price)}원
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xl font-bold text-gray-900">
+                            {getPriceDisplay(product)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg mb-6 text-center">
+              {error}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Photo Reviews Section */}
+      <section id="reviews" className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">고객 포토후기</h2>
+            <p className="text-lg text-gray-600">실제 고객분들의 생생한 후기를 확인해보세요</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {reviews.map((review) => (
+              <div key={review.id} className="bg-gray-50 rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
+                <div className="relative aspect-square">
+                  {review.images && review.images.length > 0 ? (
+                    <Image
+                      src={review.images[0]}
+                      alt={review.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400">
+                      이미지 없음
+                    </div>
+                  )}
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        size={16} 
+                        className={`${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                      />
+                    ))}
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-2">{review.title}</h4>
+                  <p className="text-gray-700 mb-3 line-clamp-3">{review.content}</p>
+                  <div className="text-sm text-gray-500">
+                    <span className="font-medium">
+                      {review.author_name || review.author?.display_name || '익명'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {reviews.length === 0 && (
+              <div className="col-span-full text-center text-gray-500">표시할 후기가 없습니다.</div>
+            )}
+          </div>
+
+          <div className="text-center mt-12">
+            <Link href="/review" className="inline-flex items-center text-[--color-brand] hover:opacity-80 font-medium text-lg">
+              더 많은 후기 보기 →
+            </Link>
           </div>
         </div>
+      </section>
 
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+      {/* Case Studies Section */}
+      <section id="cases" className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">제작 사례</h2>
+            <p className="text-lg text-gray-600">다양한 단체에서 제작한 맞춤 단체복을 만나보세요</p>
           </div>
-        )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
-                <div className="h-48 bg-gray-300"></div>
-                <div className="p-4">
-                  <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-300 rounded mb-4"></div>
-                  <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {caseStudies.map((caseStudy) => (
+              <div key={caseStudy.id} className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                <div className="relative aspect-[4/3]">
+                  <Image
+                    src={caseStudy.image}
+                    alt={caseStudy.title}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                  <div className="absolute top-3 right-3 bg-[--color-brand] text-white px-3 py-1 rounded-full text-sm font-medium">
+                    {caseStudy.category}
+                  </div>
+                </div>
+                <div className="p-6">
+                  <h3 className="font-bold text-gray-900 mb-2">{caseStudy.title}</h3>
+                  <p className="text-gray-600 text-sm">{caseStudy.description}</p>
                 </div>
               </div>
             ))}
           </div>
-        )}
-
-        {/* Products Grid */}
-        {!loading && (
-          <>
-            {products.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-gray-500 text-lg mb-4">
-                  {searchQuery || selectedCategory
-                    ? "검색 조건에 맞는 상품이 없습니다."
-                    : "등록된 상품이 없습니다."}
-                </div>
-                {(searchQuery || selectedCategory) && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedCategory(null);
-                    }}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    전체 상품 보기
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {products.map((product) => (
-                  <Link
-                    key={product.id}
-                    href={`/shop/${product.slug}`}
-                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
-                  >
-                    {/* Product Image */}
-                    <div className="relative h-48 bg-gray-100">
-                      {product.primary_image ? (
-                        <Image
-                          src={product.primary_image}
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-gray-400">
-                          이미지 없음
-                        </div>
-                      )}
-                      
-                      {/* Sale Badge */}
-                      {product.sale_price && product.sale_price < product.base_price && (
-                        <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold">
-                          SALE
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Product Info */}
-                    <div className="p-4">
-                      {/* Category */}
-                      {product.category && (
-                        <div className="text-xs text-gray-500 mb-1">
-                          {product.category.name}
-                        </div>
-                      )}
-
-                      {/* Product Name */}
-                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
-                        {product.name}
-                      </h3>
-
-                      {/* Short Description */}
-                      {product.short_description && (
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                          {product.short_description}
-                        </p>
-                      )}
-
-                      {/* Price */}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          {product.sale_price && product.sale_price < product.base_price ? (
-                            <div>
-                              <span className="text-lg font-bold text-red-600">
-                                {getPriceDisplay(product)}
-                              </span>
-                              <span className="text-sm text-gray-500 line-through ml-2">
-                                {formatPrice(product.base_price)}원
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-lg font-bold text-gray-900">
-                              {getPriceDisplay(product)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Admin Link */}
-        <div className="mt-12 text-center">
-          <Link
-            href="/admin/products"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            관리자 상품 관리
-          </Link>
         </div>
+      </section>
+
+      {/* Process Section */}
+      <section id="process" className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">제작 과정</h2>
+            <p className="text-lg text-gray-600">간단한 4단계로 완성되는 맞춤 단체복</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {processSteps.map((step, index) => (
+              <div key={step.step} className="text-center relative">
+                {index < processSteps.length - 1 && (
+                  <div className="hidden lg:block absolute top-16 left-full w-full h-0.5 bg-gray-200 transform -translate-x-1/2 z-0">
+                    <div className="absolute right-0 top-1/2 transform translate-x-1 -translate-y-1/2 w-3 h-3 bg-[--color-brand] rounded-full"></div>
+                  </div>
+                )}
+                <div className="relative z-10">
+                  <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-[--color-brand] to-[color-mix(in_oklab,var(--color-brand)_80%,black)] rounded-full flex items-center justify-center text-white">
+                    <step.icon size={48} />
+                  </div>
+                  <div className="absolute top-4 right-4 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-sm font-bold text-gray-900">
+                    {step.step}
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="py-16 bg-gradient-to-r from-[--color-brand] to-[color-mix(in_oklab,var(--color-brand)_80%,black)] text-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl lg:text-5xl font-bold mb-6">
+            간단한 상담만으로<br />
+            <span className="text-yellow-300">제작 고민 끝!</span>
+          </h2>
+          <p className="text-xl lg:text-2xl text-blue-100 mb-8 leading-relaxed">
+            전문 디자이너가 직접 상담드리고, 최적의 솔루션을 제안해드립니다.<br />
+            지금 바로 무료 상담을 신청하세요!
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+            <button 
+              onClick={() => setOpenChat(true)}
+              className="bg-yellow-400 text-gray-900 px-8 py-4 rounded-full text-xl font-bold hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2"
+            >
+              <Phone size={20} />
+              무료 상담 신청하기
+            </button>
+            <button 
+              onClick={() => setOpenChat(true)}
+              className="border-2 border-white text-white px-8 py-4 rounded-full text-xl font-medium hover:bg-white hover:text-[--color-brand] transition-colors flex items-center justify-center gap-2"
+            >
+              <MessageCircle size={20} />
+              카톡 상담하기
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div className="bg-white/10 backdrop-blur rounded-xl p-6">
+              <div className="flex justify-center mb-2">
+                <Zap size={32} className="text-yellow-400" />
+              </div>
+              <div className="font-bold mb-1">빠른 응답</div>
+              <div className="text-sm text-blue-200">평균 30분 내 답변</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-xl p-6">
+              <div className="flex justify-center mb-2">
+                <Palette size={32} className="text-yellow-400" />
+              </div>
+              <div className="font-bold mb-1">무료 디자인</div>
+              <div className="text-sm text-blue-200">전문 디자이너 상담</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-xl p-6">
+              <div className="flex justify-center mb-2">
+                <CheckCircle size={32} className="text-yellow-400" />
+              </div>
+              <div className="font-bold mb-1">품질 보장</div>
+              <div className="text-sm text-blue-200">100% 만족 보장</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Admin Link */}
+      <div className="py-8 bg-gray-100 text-center">
+        <Link
+          href="/admin/products"
+          className="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 gap-2"
+        >
+          <Settings size={16} />
+          관리자 상품 관리
+        </Link>
       </div>
     </div>
   );

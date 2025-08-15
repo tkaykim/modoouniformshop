@@ -4,7 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { SiteHeader } from "@/components/SiteHeader";
 import { supabase } from "@/lib/supabaseClient";
+import { ArrowLeft, Settings, MessageCircle, ShoppingCart, Minus, Plus } from "lucide-react";
 
 interface ProductOption {
   id: string;
@@ -387,20 +389,20 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center py-4">
-            <Link href="/shop" className="text-blue-600 hover:text-blue-800 mr-4">
-              ← 쇼핑몰
-            </Link>
-            {product.category && (
-              <>
-                <span className="text-gray-400 mr-2">/</span>
-                <span className="text-gray-600">{product.category.name}</span>
-              </>
-            )}
-          </div>
+      {/* Unified Header */}
+      <SiteHeader />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div className="flex items-center py-2">
+          <Link href="/shop" className="text-[--color-brand] hover:opacity-80 mr-2 flex items-center gap-1">
+            <ArrowLeft size={16} />
+            쇼핑몰
+          </Link>
+          {product.category && (
+            <>
+              <span className="text-gray-400 mr-2">/</span>
+              <span className="text-gray-600">{product.category.name}</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -408,8 +410,9 @@ export default function ProductDetailPage() {
         {isAdmin && (
           <button
             onClick={() => { setShowAdminPanel(true); setAdminTab('basic'); }}
-            className="fixed bottom-5 right-5 z-40 px-4 py-2 bg-black text-white rounded-full shadow-lg hover:bg-gray-800"
+            className="fixed bottom-5 right-5 z-40 px-4 py-2 bg-white text-[--color-brand] border border-[--color-brand] rounded-full shadow-lg hover:bg-[--color-brand-50] flex items-center gap-2"
           >
+            <Settings size={16} />
             관리자 관리
           </button>
         )}
@@ -614,7 +617,7 @@ export default function ProductDetailPage() {
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   className="flex items-center justify-center w-10 h-10 border border-gray-300 rounded-l-md hover:bg-gray-50"
                 >
-                  -
+                  <Minus size={16} />
                 </button>
                 <input
                   type="number"
@@ -628,7 +631,7 @@ export default function ProductDetailPage() {
                   onClick={() => setQuantity(Math.min(getSelectedOptionStock(), quantity + 1))}
                   className="flex items-center justify-center w-10 h-10 border border-gray-300 rounded-r-md hover:bg-gray-50"
                 >
-                  +
+                  <Plus size={16} />
                 </button>
                 <button type="button" onClick={() => setShowPriceTable(true)} className="ml-4 px-3 py-2 border rounded text-sm text-gray-700 hover:bg-gray-50">할인 가격표</button>
               </div>

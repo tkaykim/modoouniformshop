@@ -56,9 +56,9 @@ export default function Home() {
       {/* 하단 중앙 플로팅 말풍선 버튼 */}
       {showConsult && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-16 z-50">
-          <button onClick={handleStartConsult} className="relative px-6 py-3 bg-blue-600 text-white rounded-full shadow-lg active:scale-95 transition-transform">
+          <button onClick={handleStartConsult} className="relative px-6 py-3 bg-white text-[--color-brand] border border-[--color-brand] rounded-full shadow-lg active:scale-95 transition-transform">
             상담하기
-            <span className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-blue-600 rotate-45"></span>
+            <span className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-white rotate-45 border border-[--color-brand]"></span>
           </button>
         </div>
       )}

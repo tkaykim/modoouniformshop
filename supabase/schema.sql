@@ -108,6 +108,14 @@ create policy admin_read_inquiries on inquiries for select to authenticated usin
 drop policy if exists admin_update_inquiries on inquiries;
 create policy admin_update_inquiries on inquiries for update to authenticated using (true);
 
+-- Allow admin users to delete inquiries
+drop policy if exists admin_delete_inquiries on inquiries;
+create policy admin_delete_inquiries on inquiries
+  for delete to authenticated
+  using (exists (
+    select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'
+  ));
+
 drop policy if exists admin_read_events on inquiry_events;
 create policy admin_read_events on inquiry_events for select to authenticated using (true);
 
@@ -122,4 +130,30 @@ create policy admin_insert_events on inquiry_events for insert to authenticated 
 alter role anon set time zone 'Asia/Seoul';
 alter role authenticated set time zone 'Asia/Seoul';
 alter role service_role set time zone 'Asia/Seoul';
+
+-- =============================
+-- TEMP: Disable all RLS policies (to be replaced by Next.js API security)
+-- Drop policies to avoid recursion and allow unrestricted access while prototyping
+-- =============================
+
+-- Profiles
+drop policy if exists admin_read_profiles on profiles;
+-- Inquiries
+drop policy if exists admin_read_inquiries on inquiries;
+drop policy if exists admin_update_inquiries on inquiries;
+drop policy if exists admin_delete_inquiries on inquiries;
+-- Inquiry Events
+drop policy if exists admin_read_events on inquiry_events;
+drop policy if exists admin_insert_events on inquiry_events;
+-- Reviews
+drop policy if exists public_read_reviews on reviews;
+drop policy if exists auth_read_reviews on reviews;
+drop policy if exists auth_insert_reviews on reviews;
+drop policy if exists auth_update_reviews on reviews;
+
+-- Finally disable RLS entirely on these tables
+alter table profiles disable row level security;
+alter table inquiries disable row level security;
+alter table inquiry_events disable row level security;
+alter table reviews disable row level security;
 

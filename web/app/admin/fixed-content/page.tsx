@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
-type FixedRow = { id: string; section_type: "top" | "bottom" | string; title?: string | null; content: string; is_active: boolean; updated_at?: string };
+type FixedRow = { id: string; section_type: "top" | "bottom" | "hero" | string; title?: string | null; content: string; is_active: boolean; updated_at?: string };
 
 export default function FixedContentPage() {
   const router = useRouter();
@@ -20,6 +20,10 @@ export default function FixedContentPage() {
   const [topImgAlt, setTopImgAlt] = useState("");
   const [bottomImgFile, setBottomImgFile] = useState<File | null>(null);
   const [bottomImgAlt, setBottomImgAlt] = useState("");
+  
+  // hero banner forms
+  const [heroTitle, setHeroTitle] = useState("");
+  const [heroImgFile, setHeroImgFile] = useState<File | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -35,6 +39,7 @@ export default function FixedContentPage() {
 
   const currentTop = rows.find(r => r.section_type === "top" && r.is_active);
   const currentBottom = rows.find(r => r.section_type === "bottom" && r.is_active);
+  const heroBanners = rows.filter(r => r.section_type === "hero" && r.is_active);
 
   const saveFixed = async (type: "top" | "bottom") => {
     try {
@@ -95,12 +100,61 @@ export default function FixedContentPage() {
     }
   };
 
+  const addHeroBanner = async () => {
+    try {
+      if (!heroImgFile) return alert('이미지 파일을 선택하세요');
+      
+      // Upload image
+      const ext = heroImgFile.name.split('.').pop() || 'jpg';
+      const path = `hero/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+      const fd = new FormData();
+      fd.append('file', heroImgFile);
+      fd.append('path', path);
+      const res = await fetch('/api/storage/upload', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      const { url } = await res.json();
+
+      // Save to database
+      const { error } = await supabase.from('fixed_content').insert([{
+        section_type: 'hero',
+        title: heroTitle || null,
+        content: url, // Store image URL in content field
+        is_active: true,
+      }]);
+      if (error) throw error;
+
+      setHeroTitle('');
+      setHeroImgFile(null);
+      await load();
+      alert('히어로 배너가 추가되었습니다.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`히어로 배너 추가 실패: ${msg}`);
+    }
+  };
+
+  const deleteHeroBanner = async (id: string) => {
+    if (!confirm('히어로 배너를 삭제하시겠습니까?')) return;
+    try {
+      const { error } = await supabase.from('fixed_content').delete().eq('id', id);
+      if (error) throw error;
+      await load();
+      alert('히어로 배너가 삭제되었습니다.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`삭제 실패: ${msg}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-6">
-            <h1 className="text-2xl font-bold">고정 상세페이지 관리</h1>
+            <div className="flex items-center">
+              <img src="https://cdn-saas-web-203-48.cdn-nhncommerce.com/everyuniform97_godomall_com/data/skin/front/singgreen_250227/img/banner/e07326a36c6c3442e0a2b31e353d4b89_16547.png" alt="모두의 유니폼 l 단체복, 커스텀 굿즈 제작 전문" className="h-7 w-auto mr-3" />
+              <h1 className="text-2xl font-bold">고정 상세페이지 관리</h1>
+            </div>
             <button className="text-blue-600" onClick={() => router.push("/admin/products")}>상품 목록</button>
           </div>
         </div>
@@ -212,6 +266,82 @@ export default function FixedContentPage() {
               </tbody>
             </table>
           )}
+        </div>
+
+        {/* Hero Banners Management */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <h2 className="font-semibold mb-3">히어로 배너 관리</h2>
+          
+          {/* Add Hero Banner Form */}
+          <div className="mb-6 p-4 border rounded">
+            <h3 className="font-medium mb-3">새 히어로 배너 추가</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-700">배너 제목 (선택사항)</label>
+                <input
+                  type="text"
+                  value={heroTitle}
+                  onChange={(e) => setHeroTitle(e.target.value)}
+                  className="mt-1 w-full border rounded px-3 py-2"
+                  placeholder="배너 제목 입력"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700">배너 이미지</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setHeroImgFile(e.target.files?.[0] || null)}
+                  className="mt-1"
+                />
+              </div>
+              <button
+                onClick={addHeroBanner}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                disabled={!heroImgFile}
+              >
+                배너 추가
+              </button>
+            </div>
+          </div>
+
+          {/* Current Hero Banners */}
+          <div>
+            <h3 className="font-medium mb-3">현재 히어로 배너 ({heroBanners.length}개)</h3>
+            {heroBanners.length === 0 ? (
+              <div className="text-gray-500 text-center py-8">
+                등록된 히어로 배너가 없습니다.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {heroBanners.map((banner) => (
+                  <div key={banner.id} className="border rounded-lg overflow-hidden">
+                    <div className="aspect-video relative bg-gray-100">
+                      <img
+                        src={banner.content}
+                        alt={banner.title || '히어로 배너'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <div className="font-medium text-sm mb-1">
+                        {banner.title || '제목 없음'}
+                      </div>
+                      <div className="text-xs text-gray-500 mb-3">
+                        {banner.updated_at ? new Date(banner.updated_at).toLocaleDateString('ko-KR') : ''}
+                      </div>
+                      <button
+                        onClick={() => deleteHeroBanner(banner.id)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Plus, Minus } from "lucide-react";
 
 type FAQItem = { q: string; a: string };
 
@@ -46,7 +47,9 @@ export function FAQSection() {
 									<span className="inline-flex items-center justify-center w-6 h-6 rounded-full" style={{ background: '#0052cc', color: 'white' }}>Q</span>
 									<span className="font-medium">{item.q}</span>
 								</span>
-								<span className={`text-gray-500 transform transition-transform ${open ? "rotate-45" : ""}`}>+</span>
+								<span className="text-[--color-brand] bg-white rounded-full p-0.5">
+									{open ? <Minus size={20} /> : <Plus size={20} />}
+								</span>
 							</button>
 							<div
 								className="px-4 overflow-hidden transition-all duration-300"

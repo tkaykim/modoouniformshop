@@ -116,7 +116,10 @@ export default function AdminReviewsPage() {
     <main className="w-full max-w-[1200px] mx-auto p-6 lg:p-8 space-y-6">
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b mb-4">
         <div className="flex items-center justify-between py-3">
-          <h1 className="text-2xl font-semibold">리뷰 관리</h1>
+          <div className="flex items-center">
+            <img src="https://cdn-saas-web-203-48.cdn-nhncommerce.com/everyuniform97_godomall_com/data/skin/front/singgreen_250227/img/banner/e07326a36c6c3442e0a2b31e353d4b89_16547.png" alt="모두의 유니폼 l 단체복, 커스텀 굿즈 제작 전문" className="h-7 w-auto mr-3" />
+            <h1 className="text-2xl font-semibold">리뷰 관리</h1>
+          </div>
           <Link href="/review" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">공개 페이지 열기</Link>
         </div>
       </div>

@@ -54,7 +54,11 @@ export default function AdminProductsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [activeTab, setActiveTab] = useState<'basic' | 'options' | 'images' | 'content'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'options' | 'content'>('basic');
+  const UNLIMITED_STOCK = 999999999;
+  const [unlimitedStock, setUnlimitedStock] = useState(false);
+  const [primaryImageFile, setPrimaryImageFile] = useState<File | null>(null);
+  const [primaryImageUrl, setPrimaryImageUrl] = useState("");
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
@@ -142,6 +146,9 @@ export default function AdminProductsPage() {
     });
     setEditingProduct(null);
     setShowForm(false);
+    setUnlimitedStock(false);
+    setPrimaryImageFile(null);
+    setPrimaryImageUrl("");
   };
 
   const handleEdit = (product: Product) => {
@@ -157,8 +164,13 @@ export default function AdminProductsPage() {
       is_active: product.is_active,
       is_featured: product.is_featured,
     });
+    setUnlimitedStock(product.stock_quantity >= UNLIMITED_STOCK);
+    setPrimaryImageFile(null);
+    setPrimaryImageUrl("");
     setEditingProduct(product);
-    setShowForm(true);
+    setSelectedProduct(product);
+    setActiveTab('basic');
+    setProductModalOpen(true);
   };
 
   const openProductModal = (product: Product) => {
@@ -196,6 +208,7 @@ export default function AdminProductsPage() {
         ...formData,
         sale_price: formData.sale_price > 0 ? formData.sale_price : null,
         category_id: formData.category_id || null,
+        stock_quantity: unlimitedStock ? UNLIMITED_STOCK : formData.stock_quantity,
       };
 
       if (editingProduct) {
@@ -206,14 +219,53 @@ export default function AdminProductsPage() {
           .eq("id", editingProduct.id);
 
         if (error) throw error;
+        const productId = editingProduct.id;
+        if (primaryImageFile || primaryImageUrl.trim()) {
+          await supabase.from('product_images').update({ is_primary: false }).eq('product_id', productId);
+          let finalUrl = primaryImageUrl.trim();
+          if (primaryImageFile) {
+            const ext = primaryImageFile.name.split('.').pop() || 'jpg';
+            const path = `products/${productId}/images/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+            const fd = new FormData();
+            fd.append('file', primaryImageFile);
+            fd.append('path', path);
+            const res = await fetch('/api/storage/upload', { method: 'POST', body: fd });
+            if (!res.ok) throw new Error(await res.text());
+            const { url } = await res.json();
+            finalUrl = url;
+          }
+          if (finalUrl) {
+            await supabase.from('product_images').insert([{ product_id: productId, url: finalUrl, alt_text: formData.name, sort_order: 0, is_primary: true }]);
+          }
+        }
         alert("상품이 수정되었습니다.");
       } else {
         // Create new product
-        const { error } = await supabase
+        const { data: created, error } = await supabase
           .from("products")
-          .insert([submitData]);
+          .insert([submitData])
+          .select('id')
+          .single();
 
         if (error) throw error;
+        const newId = created!.id as string;
+        if (primaryImageFile || primaryImageUrl.trim()) {
+          let finalUrl = primaryImageUrl.trim();
+          if (primaryImageFile) {
+            const ext = primaryImageFile.name.split('.').pop() || 'jpg';
+            const path = `products/${newId}/images/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+            const fd = new FormData();
+            fd.append('file', primaryImageFile);
+            fd.append('path', path);
+            const res = await fetch('/api/storage/upload', { method: 'POST', body: fd });
+            if (!res.ok) throw new Error(await res.text());
+            const { url } = await res.json();
+            finalUrl = url;
+          }
+          if (finalUrl) {
+            await supabase.from('product_images').insert([{ product_id: newId, url: finalUrl, alt_text: formData.name, sort_order: 0, is_primary: true }]);
+          }
+        }
         alert("상품이 등록되었습니다.");
       }
 
@@ -348,12 +400,15 @@ export default function AdminProductsPage() {
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">상품 관리</h1>
-              <p className="text-gray-600 mt-1">쇼핑몰 상품을 등록하고 관리하세요</p>
+            <div className="flex items-center">
+              <img src="https://cdn-saas-web-203-48.cdn-nhncommerce.com/everyuniform97_godomall_com/data/skin/front/singgreen_250227/img/banner/e07326a36c6c3442e0a2b31e353d4b89_16547.png" alt="모두의 유니폼 l 단체복, 커스텀 굿즈 제작 전문" className="h-7 w-auto mr-3" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">상품 관리</h1>
+                <p className="text-gray-600 mt-1">쇼핑몰 상품을 등록하고 관리하세요</p>
+              </div>
             </div>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => { resetForm(); setSelectedProduct(null); setEditingProduct(null); setActiveTab('basic'); setProductModalOpen(true); }}
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
             >
               상품 등록
@@ -363,16 +418,10 @@ export default function AdminProductsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Product Form Modal */}
-        {showForm && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  {editingProduct ? "상품 수정" : "상품 등록"}
-                </h3>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Product Form Modal (old) removed */}
+        {false && (
+          <div>
+            <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">상품명 *</label>
@@ -407,14 +456,22 @@ export default function AdminProductsPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">상세 설명</label>
-                    <textarea
-                      rows={4}
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-700">상세페이지는 탭에서 관리하세요.</span>
+                    {selectedProduct && (
+                      <button type="button" className="text-blue-600 text-sm underline" onClick={()=> setActiveTab('content')}>상세페이지로 이동</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">대표 이미지 파일</label>
+                      <input type="file" accept="image/*" onChange={(e)=> setPrimaryImageFile(e.target.files?.[0]||null)} className="mt-1 block w-full" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700">대표 이미지 URL</label>
+                      <input value={primaryImageUrl} onChange={(e)=> setPrimaryImageUrl(e.target.value)} className="mt-1 block w-full border rounded px-3 py-2" placeholder="https://..." />
+                      <p className="text-xs text-gray-500 mt-1">파일과 URL이 모두 입력되면 파일이 우선됩니다.</p>
+                    </div>
                   </div>
 
                   <div>
@@ -461,13 +518,17 @@ export default function AdminProductsPage() {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700">재고 수량</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={formData.stock_quantity}
-                        onChange={(e) => setFormData(prev => ({ ...prev, stock_quantity: parseInt(e.target.value) || 0 }))}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={unlimitedStock ? UNLIMITED_STOCK : formData.stock_quantity}
+                          onChange={(e) => setFormData(prev => ({ ...prev, stock_quantity: parseInt(e.target.value) || 0 }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={unlimitedStock}
+                        />
+                        <label className="flex items-center gap-1 text-sm"><input type="checkbox" checked={unlimitedStock} onChange={(e)=> setUnlimitedStock(e.target.checked)} /> 무제한</label>
+                      </div>
                     </div>
                   </div>
 
@@ -509,9 +570,7 @@ export default function AdminProductsPage() {
                       {submitting ? "저장 중..." : (editingProduct ? "수정" : "등록")}
                     </button>
                   </div>
-                </form>
-              </div>
-            </div>
+            </form>
           </div>
         )}
 
@@ -694,23 +753,22 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Product Manage Modal (탭: 기본정보/옵션/이미지/상세페이지) */}
-      {productModalOpen && selectedProduct && (
+      {/* Product Manage Modal (탭: 기본정보/옵션/상세페이지) */}
+      {productModalOpen && (
         <div className="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center">
           <div className="bg-white w-11/12 max-w-5xl rounded-lg shadow-lg max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <div>
                 <div className="text-lg font-semibold">제품 관리</div>
-                <div className="text-sm text-gray-500">{selectedProduct.name}</div>
+                <div className="text-sm text-gray-500">{selectedProduct ? selectedProduct.name : '신규 상품'}</div>
               </div>
               <button onClick={closeProductModal} className="text-gray-500 hover:text-gray-700">닫기</button>
             </div>
             <div className="px-6 pt-3">
               <div className="flex gap-2 border-b">
                 <button className={`px-3 py-2 text-sm ${activeTab==='basic'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=>setActiveTab('basic')}>기본정보</button>
-                <button className={`px-3 py-2 text-sm ${activeTab==='options'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=>setActiveTab('options')}>옵션</button>
-                <button className={`px-3 py-2 text-sm ${activeTab==='images'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=>setActiveTab('images')}>이미지</button>
-                <button className={`px-3 py-2 text-sm ${activeTab==='content'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=>setActiveTab('content')}>상세페이지</button>
+                <button className={`px-3 py-2 text-sm ${activeTab==='options'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=> selectedProduct ? setActiveTab('options') : null} disabled={!selectedProduct}>옵션</button>
+                <button className={`px-3 py-2 text-sm ${activeTab==='content'?'border-b-2 border-blue-600 text-blue-700':'text-gray-600'}`} onClick={()=> selectedProduct ? setActiveTab('content') : null} disabled={!selectedProduct}>상세페이지</button>
               </div>
             </div>
             <div className="p-6 overflow-auto">
@@ -747,14 +805,24 @@ export default function AdminProductsPage() {
                       className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">상세 설명</label>
-                    <textarea
-                      rows={4}
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-700">상세페이지는 탭에서 관리하세요.</span>
+                    {selectedProduct && (
+                      <button type="button" className="text-blue-600 text-sm underline" onClick={()=> setActiveTab('content')}>상세페이지로 이동</button>
+                    )}
+                  </div>
+
+                  {/* 대표 이미지 첨부 또는 URL 입력 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">대표 이미지 파일</label>
+                      <input type="file" accept="image/*" onChange={(e)=> setPrimaryImageFile(e.target.files?.[0]||null)} className="mt-1 block w-full" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700">대표 이미지 URL</label>
+                      <input value={primaryImageUrl} onChange={(e)=> setPrimaryImageUrl(e.target.value)} className="mt-1 block w-full border rounded px-3 py-2" placeholder="https://..." />
+                      <p className="text-xs text-gray-500 mt-1">파일과 URL이 모두 입력되면 파일이 우선됩니다.</p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -782,13 +850,17 @@ export default function AdminProductsPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">재고 수량</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={formData.stock_quantity}
-                        onChange={(e) => setFormData(prev => ({ ...prev, stock_quantity: parseInt(e.target.value) || 0 }))}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={unlimitedStock ? UNLIMITED_STOCK : formData.stock_quantity}
+                          onChange={(e) => setFormData(prev => ({ ...prev, stock_quantity: parseInt(e.target.value) || 0 }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={unlimitedStock}
+                        />
+                        <label className="flex items-center gap-1 text-sm"><input type="checkbox" checked={unlimitedStock} onChange={(e)=> setUnlimitedStock(e.target.checked)} /> 무제한</label>
+                      </div>
                     </div>
                   </div>
                   <div>

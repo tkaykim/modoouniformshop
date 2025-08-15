@@ -19,6 +19,10 @@ export default function ProductImagesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [altText, setAltText] = useState("");
   const [isPrimary, setIsPrimary] = useState(false);
+  // URL add states
+  const [urlInput, setUrlInput] = useState("");
+  const [urlAltText, setUrlAltText] = useState("");
+  const [urlIsPrimary, setUrlIsPrimary] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -62,6 +66,26 @@ export default function ProductImagesPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       alert(`업로드 실패: ${msg}`);
+    }
+  };
+
+  const handleAddByUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!urlInput.trim()) return alert("이미지 URL을 입력하세요");
+    try {
+      if (urlIsPrimary) {
+        await supabase.from("product_images").update({ is_primary: false }).eq("product_id", productId);
+      }
+      const { error: dbErr } = await supabase.from("product_images").insert([
+        { product_id: productId, url: urlInput.trim(), alt_text: (urlAltText || null), sort_order: nextSortOrder, is_primary: urlIsPrimary },
+      ]);
+      if (dbErr) throw dbErr;
+      setUrlInput(""); setUrlAltText(""); setUrlIsPrimary(false);
+      await load();
+      alert("이미지 URL이 등록되었습니다.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`등록 실패: ${msg}`);
     }
   };
 
@@ -115,7 +139,10 @@ export default function ProductImagesPage() {
       <div className="bg-white shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-6">
-            <h1 className="text-2xl font-bold">제품 이미지 관리</h1>
+            <div className="flex items-center">
+              <img src="https://cdn-saas-web-203-48.cdn-nhncommerce.com/everyuniform97_godomall_com/data/skin/front/singgreen_250227/img/banner/e07326a36c6c3442e0a2b31e353d4b89_16547.png" alt="모두의 유니폼 l 단체복, 커스텀 굿즈 제작 전문" className="h-7 w-auto mr-3" />
+              <h1 className="text-2xl font-bold">제품 이미지 관리</h1>
+            </div>
             <button className="text-blue-600" onClick={() => router.push("/admin/products")}>목록으로</button>
           </div>
         </div>
@@ -126,7 +153,7 @@ export default function ProductImagesPage() {
           <div className="mb-6 text-gray-700">대상 상품: <span className="font-semibold">{product.name}</span></div>
         )}
 
-        {/* Uploader */}
+        {/* Uploader (파일 업로드) */}
         <form onSubmit={handleUpload} className="bg-white rounded-lg shadow p-4 mb-8">
           <h3 className="font-semibold mb-3">이미지 업로드</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
@@ -144,6 +171,28 @@ export default function ProductImagesPage() {
             </label>
             <div className="md:text-right">
               <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">업로드</button>
+            </div>
+          </div>
+        </form>
+
+        {/* Add by URL (외부 이미지 주소) */}
+        <form onSubmit={handleAddByUrl} className="bg-white rounded-lg shadow p-4 mb-8">
+          <h3 className="font-semibold mb-3">이미지 URL로 추가</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div className="md:col-span-2">
+              <label className="block text-sm text-gray-700">이미지 주소(URL)</label>
+              <input value={urlInput} onChange={(e)=>setUrlInput(e.target.value)} className="mt-1 border rounded px-2 py-1 w-full" placeholder="https://..." />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700">대체 텍스트(alt)</label>
+              <input value={urlAltText} onChange={(e)=>setUrlAltText(e.target.value)} className="mt-1 border rounded px-2 py-1 w-full" />
+            </div>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={urlIsPrimary} onChange={(e)=>setUrlIsPrimary(e.target.checked)} />
+              대표 이미지로 설정
+            </label>
+            <div className="md:text-right">
+              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">추가</button>
             </div>
           </div>
         </form>

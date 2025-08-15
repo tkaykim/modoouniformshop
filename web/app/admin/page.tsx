@@ -258,7 +258,10 @@ export default function AdminPage() {
     <main className="w-full max-w-[1400px] mx-auto p-6 lg:p-8">
       <div className="sticky top-0 z-30 mb-6 bg-white/80 backdrop-blur border-b">
         <div className="flex items-center justify-between py-3">
-          <h1 className="text-2xl font-semibold tracking-tight">관리자</h1>
+          <div className="flex items-center">
+            <img src="https://cdn-saas-web-203-48.cdn-nhncommerce.com/everyuniform97_godomall_com/data/skin/front/singgreen_250227/img/banner/e07326a36c6c3442e0a2b31e353d4b89_16547.png" alt="모두의 유니폼 l 단체복, 커스텀 굿즈 제작 전문" className="h-7 w-auto mr-3" />
+            <h1 className="text-2xl font-semibold tracking-tight">관리자</h1>
+          </div>
           <div className="flex gap-2">
             <a href="/admin" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">문의 관리</a>
             <a href="/admin/reviews" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">리뷰 관리</a>

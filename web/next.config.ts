@@ -22,6 +22,16 @@ const nextConfig: NextConfig = {
         hostname: 'via.placeholder.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'godomall-storage.cdn-nhncommerce.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn-saas-web-203-48.cdn-nhncommerce.com',
+        pathname: '/**',
+      },
     ],
     minimumCacheTTL: 60,
   },

@@ -166,7 +166,10 @@ export default function ProductOptionsPage() {
       <div className="bg-white shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-6">
-            <h1 className="text-2xl font-bold">제품 옵션 관리</h1>
+            <div className="flex items-center">
+              <img src="https://cdn-saas-web-203-48.cdn-nhncommerce.com/everyuniform97_godomall_com/data/skin/front/singgreen_250227/img/banner/e07326a36c6c3442e0a2b31e353d4b89_16547.png" alt="모두의 유니폼 l 단체복, 커스텀 굿즈 제작 전문" className="h-7 w-auto mr-3" />
+              <h1 className="text-2xl font-bold">제품 옵션 관리</h1>
+            </div>
             <button className="text-blue-600" onClick={() => router.push("/admin/products")}>목록으로</button>
           </div>
         </div>

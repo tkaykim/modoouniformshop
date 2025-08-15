@@ -3,11 +3,19 @@
 :root {
   --background: #ffffff !important;
   --foreground: #111111 !important;
+  --text-dark: #111111 !important;
+  --text-muted: #333333 !important;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Brand palette */
+  --color-brand-50: #e6f0ff;
+  --color-brand-600: #0052cc; /* 키컬러 */
+  --color-brand-700: #0046b0;
+  --color-sky-50: #f0f7ff;
+  --color-brand: var(--color-brand-600);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -25,3 +33,50 @@ body {
   color: var(--foreground) !important;
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* 추가 다크모드 무시 규칙 */
+* {
+  color-scheme: light !important;
+}
+
+html {
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+/* Text selection highlight uses brand color */
+::selection {
+  background: var(--color-brand-600);
+  color: #ffffff;
+}
+
+/* Design guide utilities */
+a { color: inherit; }
+
+.text-brand { color: var(--color-brand) !important; }
+.bg-brand { background: var(--color-brand) !important; }
+.border-brand { border-color: var(--color-brand) !important; }
+
+.btn-brand {
+  background: var(--color-brand);
+  color: #ffffff;
+  border: 1px solid var(--color-brand);
+}
+
+.btn-outline-brand {
+  background: #ffffff;
+  color: var(--color-brand);
+  border: 1px solid var(--color-brand);
+}
+
+.chip-brand-selected {
+  background: var(--color-brand);
+  color: #ffffff;
+  border-color: var(--color-brand);
+}
+
+.dot { width: 0.75rem; height: 0.75rem; background: #ffffff; border-radius: 9999px; }
+.dot-active { background: var(--color-brand); }
+
+svg.icon-brand { color: var(--color-brand); stroke: currentColor; }
+svg.icon-muted { color: var(--text-muted); stroke: currentColor; }

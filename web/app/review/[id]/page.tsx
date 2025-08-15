@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 import { shimmer } from "@/lib/img";
+import { SiteHeader } from "@/components/SiteHeader";
 
 type Review = {
 	id: string;
@@ -54,6 +55,7 @@ export default function ReviewDetailPage() {
 
 	return (
 		<main className="max-w-2xl mx-auto p-6 space-y-4">
+			<SiteHeader />
 			<div className="rounded-2xl overflow-hidden bg-white shadow-sm">
 				{thumb ? (
 					<div className="relative w-full h-56 md:h-72 bg-gray-100">
