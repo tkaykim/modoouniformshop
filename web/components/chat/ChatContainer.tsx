@@ -12,7 +12,11 @@ import { Step8 } from "./steps/Step8Contact";
 import { Step9 } from "./steps/Step9PreferredTime";
 import { AnimatePresence, motion } from "framer-motion";
 
-export function ChatContainer() {
+type ChatContainerProps = {
+  disableAutoCenter?: boolean;
+};
+
+export function ChatContainer({ disableAutoCenter = false }: ChatContainerProps = {}) {
   const { init, currentStep, reset, setFocusedStep } = useChatStore();
   const enabled = [1,2,3,8];
   const stepRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -23,6 +27,7 @@ export function ChatContainer() {
 
   // Keep current step visually centered by scrolling the page by the exact delta
   useEffect(() => {
+    if (disableAutoCenter) return;
     const centerNow = () => {
       const el = stepRefs.current[currentStep];
       if (!el) return;
@@ -62,7 +67,7 @@ export function ChatContainer() {
       ro?.disconnect();
       mo?.disconnect();
     };
-  }, [currentStep]);
+  }, [currentStep, disableAutoCenter]);
 
   return (
     <div ref={containerRef} className="space-y-4 relative min-h-[70vh]">

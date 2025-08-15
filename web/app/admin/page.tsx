@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Inquiry = {
@@ -164,19 +164,38 @@ export default function AdminPage() {
 
   async function deleteInquiry(id: string) {
     if (!confirm('삭제하시겠습니까?')) return;
-    const { error } = await supabase.from('inquiries').delete().eq('id', id);
-    if (error) setError(error.message);
+    setError(null);
+    // Optimistic UI
     setInquiries(prev => prev.filter(q => q.id !== id));
+    const { error } = await supabase.from('inquiries').delete().eq('id', id);
+    if (error) {
+      // rollback
+      setInquiries(prev => prev);
+      setError(error.message);
+      alert(`삭제 실패: ${error.message}`);
+    }
   }
 
   async function bulkDelete() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     if (!confirm(`${ids.length}건을 삭제하시겠습니까?`)) return;
-    const { error } = await supabase.from('inquiries').delete().in('id', ids);
-    if (error) { setError(error.message); return; }
-    setInquiries(prev => prev.filter(q => !selectedIds.has(q.id)));
-    setSelectedIds(new Set());
+    setError(null);
+    // Chunk deletions to avoid URL length limits in REST query (id=in.(...))
+    const CHUNK_SIZE = 8; // keep URL short to avoid REST length limits
+    try {
+      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + CHUNK_SIZE);
+        const { error } = await supabase.from('inquiries').delete().in('id', chunk);
+        if (error) throw error;
+      }
+      setInquiries(prev => prev.filter(q => !selectedIds.has(q.id)));
+      setSelectedIds(new Set());
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      alert(`선택 삭제 실패: ${msg}`);
+    }
   }
 
   function toggleSelect(id: string) {
@@ -243,6 +262,7 @@ export default function AdminPage() {
           <div className="flex gap-2">
             <a href="/admin" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">문의 관리</a>
             <a href="/admin/reviews" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">리뷰 관리</a>
+            <a href="/admin/products" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">상품 관리</a>
             <button className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50" onClick={signOut}>로그아웃</button>
           </div>
         </div>
@@ -382,8 +402,8 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {inquiries.map((q) => (
-                <>
-                  <tr key={q.id} className="border-t align-top hover:bg-gray-50">
+                <Fragment key={q.id}>
+                  <tr className="border-t align-top hover:bg-gray-50">
                     <td className="px-4 py-3">
                       {isAdmin && (
                         <input type="checkbox" className="mr-2" checked={selectedIds.has(q.id)} onChange={()=> toggleSelect(q.id)} />
@@ -422,14 +442,14 @@ export default function AdminPage() {
                       </select>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <button className="px-3 py-1.5 border rounded-full bg-white hover:bg-gray-50 mr-2" onClick={()=> openEdit(q)}>수정</button>
+                      <button className="px-3 py-1.5 border rounded-full bg-white hover:bg-gray-50 mr-2" onClick={(e)=> { e.preventDefault(); e.stopPropagation(); openEdit(q); }}>수정</button>
                       {isAdmin && (
-                        <button className="px-3 py-1.5 border rounded-full bg-white hover:bg-gray-50" onClick={()=> deleteInquiry(q.id)}>삭제</button>
+                        <button className="px-3 py-1.5 border rounded-full bg-white hover:bg-gray-50" onClick={(e)=> { e.preventDefault(); e.stopPropagation(); deleteInquiry(q.id); }}>삭제</button>
                       )}
                     </td>
                   </tr>
                   {expandedIds.has(q.id) && (
-                    <tr>
+                    <tr key={`${q.id}-detail`}>
                       <td className="px-4 py-3 bg-gray-50" colSpan={9}>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div><span className="text-gray-500">이름</span>: {q.name || '-'}</div>
@@ -443,7 +463,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

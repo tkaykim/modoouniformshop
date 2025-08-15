@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: '**.supabase.co',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+        pathname: '/**',
       },
     ],
     minimumCacheTTL: 60,

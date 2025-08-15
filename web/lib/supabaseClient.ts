@@ -9,5 +9,22 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 
-export const supabase = createClient(SUPABASE_URL || "", SUPABASE_ANON_KEY || "");
+type SupabaseClientType = ReturnType<typeof createClient>;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __supabase__: SupabaseClientType | undefined;
+}
+
+export const supabase: SupabaseClientType = (() => {
+  if (typeof window !== "undefined") {
+    const g = globalThis as unknown as { __supabase__?: SupabaseClientType };
+    if (!g.__supabase__) {
+      g.__supabase__ = createClient(SUPABASE_URL || "", SUPABASE_ANON_KEY || "");
+    }
+    return g.__supabase__ as SupabaseClientType;
+  }
+  // SSR/Edge: create per-request instance (no browser storage)
+  return createClient(SUPABASE_URL || "", SUPABASE_ANON_KEY || "");
+})();
 

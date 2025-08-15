@@ -1,6 +1,8 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { ChatContainer } from "@/components/chat/ChatContainer";
+import { ChatModal } from "@/components/chat/ChatModal";
 import { ReviewsPreview } from "@/components/reviews/ReviewsPreview";
 import { useEffect, useRef, useState } from "react";
 import { ReviewsModal } from "@/components/reviews/ReviewsModal";
@@ -13,6 +15,7 @@ export default function Home() {
   const reset = useChatStore((s) => s.reset);
   const setFocusedStep = useChatStore((s) => s.setFocusedStep);
   const [showConsult, setShowConsult] = useState(true);
+  const [openChat, setOpenChat] = useState(false);
 
   useEffect(() => {
     const el = chatRef.current;
@@ -29,10 +32,11 @@ export default function Home() {
   const handleStartConsult = () => {
     reset();
     setFocusedStep(1);
-    chatRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setOpenChat(true);
   };
   return (
     <main className="min-h-screen mx-auto p-0 md:p-4" style={{ maxWidth: 622 }}>
+      {/* Shopping Mall Link removed as requested */}
       <section className="w-full mx-auto">
         <Image src="/hero.gif" alt="hero" width={0} height={0} priority sizes="(max-width: 622px) 100vw, 622px" style={{ width: '100%', height: 'auto' }} />
       </section>
@@ -47,6 +51,7 @@ export default function Home() {
       <section ref={chatRef} className="w-full px-4 pb-20 mx-auto">
         <ChatContainer />
       </section>
+      <ChatModal open={openChat} onClose={() => setOpenChat(false)} />
       <ReviewsModal open={openReviews} onClose={() => setOpenReviews(false)} />
       {/* 하단 중앙 플로팅 말풍선 버튼 */}
       {showConsult && (
