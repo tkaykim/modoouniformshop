@@ -12,8 +12,10 @@ export function middleware(req: NextRequest) {
       apiUrl.search = '';
       return NextResponse.rewrite(apiUrl);
     } catch {
-      const fallback = new URL('/api/payments/easypay/return', req.url);
-      return NextResponse.rewrite(fallback);
+      const url = req.nextUrl.clone();
+      url.pathname = '/api/payments/easypay/return';
+      url.search = '';
+      return NextResponse.rewrite(url);
     }
   }
   // Some gateways may POST back to /cart on cancel/close in local envs. Convert to safe GET redirect.

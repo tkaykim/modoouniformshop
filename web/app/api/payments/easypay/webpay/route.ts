@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     const shopOrderNo = `${yyyy}${mm}${dd}${Math.floor(Math.random()*1e9)}`;
 
     const origin = req.nextUrl.origin;
-    // Use page route for return; middleware will rewrite POST to API then redirect back to page with status
-    const returnUrl = `${origin}/payments/easypay/return`;
+    // Send POST callback directly to API route to avoid page/route conflicts
+    const returnUrl = `${origin}/api/payments/easypay/return`;
 
     const payload = {
       mallId,
