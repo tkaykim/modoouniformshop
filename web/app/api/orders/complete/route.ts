@@ -25,6 +25,10 @@ export async function POST(req: NextRequest) {
       const { data: cartRows } = await admin.from('cart_items').select('*').match(cartFilter);
       items = cartRows || [];
     }
+    // fallback to cart_snapshot when live cart is empty (e.g., already cleared)
+    if (!items.length && order.cart_snapshot) {
+      items = Array.isArray(order.cart_snapshot) ? order.cart_snapshot : [];
+    }
 
     // Load product snapshot for naming
     const productIds = Array.from(new Set(items.map((x) => x.product_id))).filter(Boolean);
@@ -44,12 +48,26 @@ export async function POST(req: NextRequest) {
         unit_price: Number(it.unit_price),
         quantity: Number(it.quantity),
         total_price: Number(it.total_price),
+        attributes: it.selected_options || null,
       }));
       await admin.from('order_items').insert(orderItems);
     }
 
+    // Cross-check: authorizationId must be present
+    if (!authorizationId) {
+      return NextResponse.json({ error: 'authorization_missing' }, { status: 400 });
+    }
+
     // mark order as paid
-    await admin.from('orders').update({ status: 'paid', pg_authorization_id: authorizationId || null, pg_return_payload: returnPayload || null }).eq('id', order.id);
+    await admin.from('orders').update({
+      status: 'paid',
+      payment_status: 'paid',
+      pg_authorization_id: authorizationId || null,
+      pg_return_payload: returnPayload || null,
+      pg_approval: returnPayload?.approval || null,
+      subtotal: order.subtotal || (items.reduce((s, x) => s + Number(x.unit_price) * Number(x.quantity), 0)),
+      total_amount: (order.subtotal || (items.reduce((s, x) => s + Number(x.unit_price) * Number(x.quantity), 0))) + Number(order.shipping_fee || 0),
+    }).eq('id', order.id);
 
     // clear cart
     if (cartFilter.user_id || cartFilter.session_id) {

@@ -327,18 +327,33 @@ export default function CartPage() {
 				const deviceType = typeof window !== 'undefined' && window.innerWidth < 640 ? 'mobile' : 'pc';
 				const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 				try { const sid = localStorage.getItem('cart_session_id'); if (sid) headers['x-cart-session-id'] = sid; } catch {}
-				const webpayRes = await fetch('/api/payments/easypay/webpay', {
+				let cartSessionId = '';
+				try { cartSessionId = localStorage.getItem('cart_session_id') || ''; } catch {}
+				const webpayPath = '/api/ep9/trades/webpay';
+				// shopOrderNo 클라이언트에서 생성하여 서버/PG 모두 동일 사용
+				const now = new Date();
+				const yyyy = now.getFullYear();
+				const mm = String(now.getMonth() + 1).padStart(2, '0');
+				const dd = String(now.getDate()).padStart(2, '0');
+				const shopOrderNo = `${yyyy}${mm}${dd}${Math.floor(Math.random()*1e9)}`;
+				const webpayRes = await fetch(webpayPath, {
 					method: 'POST',
 					headers,
-					body: JSON.stringify({ amount: total, goodsName: '모두의유니폼 주문', deviceType, orderDraft: {
-						orderName, orderPhone, orderEmail,
-						shippingMethod, sameAsOrderer, receiverName, receiverPhone, zipCode, addr1, addr2,
-						paymentMethod,
-						subtotal,
-						shippingFee,
-						total,
-						cartSnapshot: items.map(it => ({ id: it.id, product_id: it.product_id, selected_options: it.selected_options, quantity: it.quantity, unit_price: it.unit_price, total_price: it.total_price })),
-					}
+					body: JSON.stringify({
+						amount: total,
+						goodsName: '모두의유니폼 주문',
+						deviceTypeCode: deviceType,
+						shopOrderNo,
+						orderDraft: {
+							orderName, orderPhone, orderEmail,
+							shippingMethod, sameAsOrderer, receiverName, receiverPhone, zipCode, addr1, addr2,
+							paymentMethod,
+							subtotal,
+							shippingFee,
+							total,
+							sessionId: cartSessionId,
+							cartSnapshot: items.map(it => ({ id: it.id, product_id: it.product_id, selected_options: it.selected_options, quantity: it.quantity, unit_price: it.unit_price, total_price: it.total_price })),
+						},
 					}),
 				});
 				const webpayData = await webpayRes.json();
@@ -370,7 +385,7 @@ export default function CartPage() {
 				} catch {}
 
 				// open payment in popup, fallback to redirect if blocked
-				const features = 'width=480,height=720,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+				const features = 'width=600,height=680,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
 				const win = typeof window !== 'undefined' ? window.open(webpayData.authPageUrl as string, 'easypay_payment', features) : null;
 				if (!win) {
 					window.location.href = webpayData.authPageUrl as string;
@@ -713,6 +728,20 @@ export default function CartPage() {
 									>
 										{paying ? '결제 요청 중...' : '결제하기'}
 									</button>
+									{/* 관리자 전용 결제 모드 토글 (개발환경) */}
+									{process.env.NODE_ENV !== 'production' && (
+										<div className="mt-2 flex items-center justify-between gap-2 text-sm">
+											<span className="text-gray-600">결제 모드:</span>
+											<div className="flex items-center gap-2">
+												<label className="inline-flex items-center gap-1">
+													<input type="radio" name="paymode" defaultChecked onChange={()=>{ (window as any).__EASYPAY_TEST__ = true; alert('테스트 결제 모드'); }} /> 테스트
+												</label>
+												<label className="inline-flex items-center gap-1">
+													<input type="radio" name="paymode" onChange={()=>{ (window as any).__EASYPAY_TEST__ = false; alert('실결제 모드'); }} /> 실결제
+												</label>
+											</div>
+										</div>
+									)}
 									{payResult && (
 										<pre className="mt-3 text-xs bg-gray-50 p-3 rounded border overflow-auto max-h-64">{JSON.stringify(payResult, null, 2)}</pre>
 									)}

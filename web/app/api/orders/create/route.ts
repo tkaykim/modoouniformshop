@@ -15,9 +15,11 @@ export async function POST(req: NextRequest) {
     }
     const admin = createClient(url, serviceKey);
 
-    // get user/session if available from headers (optional)
+    // get user/session if available
     let sessionId = '';
-    try { sessionId = req.headers.get('x-cart-session-id') || '' } catch {}
+    try {
+      sessionId = req.headers.get('x-cart-session-id') || orderDraft?.sessionId || '';
+    } catch {}
 
     const orderInsert = {
       shop_order_no: shopOrderNo,
@@ -37,13 +39,11 @@ export async function POST(req: NextRequest) {
       addr1: orderDraft.addr1 || null,
       addr2: orderDraft.addr2 || null,
       session_id: sessionId || null,
-      cart_snapshot: orderDraft.cartSnapshot || null,
     } as any;
 
     const { data: orderRow, error: orderErr } = await admin.from('orders').insert(orderInsert).select('id').single();
     if (orderErr) {
-      // if unique violation due to re-try, ignore
-      return NextResponse.json({ ok: true, skipped: true });
+      return NextResponse.json({ error: orderErr.message }, { status: 500 });
     }
 
     // Optionally snapshot cart items at this moment for display
