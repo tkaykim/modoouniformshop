@@ -294,7 +294,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Fixed Content (global top/bottom sections)
+-- Fixed Content (global sections: top, bottom, hero, case)
 create table if not exists fixed_content (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz default now(),
@@ -303,6 +303,26 @@ create table if not exists fixed_content (
   section_type text not null, -- 'top' | 'bottom'
   title text,
   content text not null,
+  is_active boolean default true
+);
+
+-- Extend fixed_content for ordering where needed (hero/case)
+alter table if exists fixed_content
+  add column if not exists sort_order int;
+
+-- Portfolio (제작사례 전용 테이블)
+create table if not exists portfolio (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+
+  title text not null,
+  description text,
+  photo text,
+  date date,
+  image_url text,
+  category text,
+  sort_order int,
   is_active boolean default true
 );
 

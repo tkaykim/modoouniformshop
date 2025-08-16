@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChatModal } from "@/components/chat/ChatModal";
-import { SiteHeader } from "@/components/SiteHeader";
+import { SiteHeader } from "../../components/SiteHeader";
 import { supabase } from "@/lib/supabaseClient";
 import { 
   MessageCircle, 
@@ -40,6 +40,14 @@ interface Product {
     min: number;
     max: number;
   };
+}
+
+interface CaseStudy {
+  id: string;
+  title: string;
+  description?: string | null;
+  image: string;
+  category?: string | null;
 }
 
 interface Category {
@@ -92,6 +100,9 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openChat, setOpenChat] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [adminView, setAdminView] = useState<'menu'|'categories'|'products'|'reviews'|'cases'>('menu');
   
   // Hero carousel state
   const [heroBanners, setHeroBanners] = useState<HeroBanner[]>([]);
@@ -99,17 +110,49 @@ export default function ShopPage() {
   
   // Reviews state
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [cases, setCases] = useState<CaseStudy[]>([]);
+  const [reviewsPage, setReviewsPage] = useState(0);
+  const [casesPage, setCasesPage] = useState(0);
+  const [processPage, setProcessPage] = useState(0);
+  const [viewport, setViewport] = useState<'sm'|'md'|'lg'>('sm');
 
   useEffect(() => {
     loadCategories();
     loadProducts();
     loadHeroBanners();
     loadReviews();
+    loadCases();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadProducts();
   }, [selectedCategory, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Admin 권한 확인
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: userRes } = await supabase.auth.getUser();
+        const user = userRes?.user;
+        if (!user) return;
+        type ProfileRow = { role?: string | null };
+        const prof = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+        const role = (prof.data as ProfileRow | null)?.role || null;
+        if (role === 'admin') setIsAdmin(true);
+      } catch {}
+    })();
+  }, []);
+
+  // Viewport detection for responsive paging
+  useEffect(() => {
+    const detect = () => {
+      const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
+      setViewport(w < 640 ? 'sm' : w < 1024 ? 'md' : 'lg');
+    };
+    detect();
+    window.addEventListener('resize', detect);
+    return () => window.removeEventListener('resize', detect);
+  }, []);
 
   // Auto-slide for hero carousel
   useEffect(() => {
@@ -159,6 +202,27 @@ export default function ShopPage() {
       setHeroBanners(banners as HeroBanner[]);
     } catch (err) {
       console.error("히어로 배너 로드 실패:", err);
+    }
+  };
+
+  const loadCases = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('portfolio')
+        .select('id, title, description, photo, date, category, sort_order, created_at')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true } as any);
+      if (error) throw error;
+      const list: CaseStudy[] = (data || []).map((r: any) => ({
+        id: String(r.id),
+        title: r.title || '',
+        description: r.description || '',
+        image: r.photo || '',
+        category: r.category || '',
+      }));
+      setCases(list);
+    } catch (e) {
+      setCases([]);
     }
   };
 
@@ -216,7 +280,16 @@ export default function ShopPage() {
         .eq("is_active", true);
 
       if (selectedCategory) {
-        query = query.eq("category.slug", selectedCategory);
+        // First get category ID from slug
+        const { data: categoryData } = await supabase
+          .from("product_categories")
+          .select("id")
+          .eq("slug", selectedCategory)
+          .single();
+        
+        if (categoryData) {
+          query = query.eq("category_id", (categoryData as any).id);
+        }
       }
 
       if (searchQuery) {
@@ -286,11 +359,21 @@ export default function ShopPage() {
   };
 
   const getPriceDisplay = (product: Product) => {
-    if (product.price_range && product.price_range.min !== product.price_range.max) {
-      return `${formatPrice(product.price_range.min)} ~ ${formatPrice(product.price_range.max)}원`;
-    }
-    const displayPrice = product.sale_price || product.base_price;
+    // Always show single price: sale price if exists, otherwise base price
+    const displayPrice = (product.sale_price && product.sale_price < product.base_price)
+      ? product.sale_price
+      : product.base_price;
     return `${formatPrice(displayPrice)}원`;
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}.${mm}.${dd}`;
   };
 
   return (
@@ -319,29 +402,31 @@ export default function ShopPage() {
             <p className="text-lg text-gray-600">다양한 스타일의 단체복을 만나보세요</p>
           </div>
 
-          {/* Category Filter */}
-          <div className="flex flex-wrap justify-center gap-4 mb-12">
-            <button
-              className={`px-6 py-3 rounded-full border-2 font-medium transition-colors ${!selectedCategory 
-                ? 'bg-[--color-brand] text-white border-[--color-brand]' 
-                : 'bg-white text-gray-700 border-gray-300 hover:border-[--color-brand]'
-              }`}
-              onClick={() => setSelectedCategory(null)}
-            >
-              전체
-            </button>
-            {categories.map((c) => (
+          {/* Category Filter - single line, underline only for selected, horizontal scroll */}
+          <div className="mb-12 -mx-4 px-4 overflow-x-auto">
+            <div className="flex gap-6 whitespace-nowrap justify-center lg:justify-center md:justify-center sm:justify-start">
               <button
-                key={c.id}
-                className={`px-6 py-3 rounded-full border-2 font-medium transition-colors whitespace-nowrap ${selectedCategory === c.slug
-                  ? 'bg-[--color-brand] text-white border-[--color-brand]'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-[--color-brand]'
-                }`}
-                onClick={() => setSelectedCategory(c.slug)}
+                className={`appearance-none bg-transparent px-0 py-2 text-base transition-colors ${!selectedCategory
+                  ? 'text-[#0052cc] border-b-2 border-[#0052cc]'
+                  : 'text-gray-700 hover:text-[#0052cc] border-b-2 border-transparent'}
+                `}
+                onClick={() => setSelectedCategory(null)}
               >
-                {c.name}
+                전체
               </button>
-            ))}
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  className={`appearance-none bg-transparent px-0 py-2 text-base transition-colors ${selectedCategory === c.slug
+                    ? 'text-[#0052cc] border-b-2 border-[#0052cc]'
+                    : 'text-gray-700 hover:text-[#0052cc] border-b-2 border-transparent'}
+                  `}
+                  onClick={() => setSelectedCategory(c.slug)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Search */}
@@ -503,48 +588,71 @@ export default function ShopPage() {
             <p className="text-lg text-gray-600">실제 고객분들의 생생한 후기를 확인해보세요</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {reviews.map((review) => (
-              <div key={review.id} className="bg-gray-50 rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
-                <div className="relative aspect-square">
-                  {review.images && review.images.length > 0 ? (
-                    <Image
-                      src={review.images[0]}
-                      alt={review.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400">
-                      이미지 없음
+          {(() => {
+            const perPage = viewport === 'sm' ? 1 : viewport === 'md' ? 2 : 4;
+            const pages = Math.ceil(reviews.length / perPage) || 1;
+            const start = reviewsPage * perPage;
+            const visible = reviews.slice(start, start + perPage);
+            return (
+              <>
+                <div className={`grid gap-4 ${viewport==='lg' ? 'grid-cols-4' : viewport==='md' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {visible.map((review) => (
+                    <div key={review.id} className="bg-gray-50 rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
+                      <div className="relative aspect-square">
+                        {review.images && review.images.length > 0 ? (
+                          <Image
+                            src={review.images[0]}
+                            alt={review.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400">
+                            이미지 없음
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-6 flex flex-col h-56">
+                        <div>
+                          <div className="flex items-center gap-1 mb-3">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                size={16} 
+                                className={`${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                              />
+                            ))}
+                          </div>
+                          <h4 className="font-medium text-gray-900 mb-2 truncate block">{review.title}</h4>
+                          <p className="text-gray-700 mb-3 line-clamp-3">{review.content}</p>
+                        </div>
+                        <div className="mt-auto pt-2 flex items-center justify-between text-sm text-gray-500">
+                          <span className="font-medium">{review.author_name || review.author?.display_name || '익명'}</span>
+                          <span>{formatDate((review as any).display_at || (review as any).created_at)}</span>
+                        </div>
+                      </div>
                     </div>
+                  ))}
+                  {visible.length === 0 && (
+                    <div className="text-center text-gray-500">표시할 후기가 없습니다.</div>
                   )}
                 </div>
-                <div className="p-6">
-                  <div className="flex items-center gap-1 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        size={16} 
-                        className={`${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                {pages > 1 && (
+                  <div className="flex justify-center gap-2 mt-6">
+                    {Array.from({ length: pages }).map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setReviewsPage(i)}
+                        className={`w-2.5 h-2.5 rounded-full ${i === reviewsPage ? 'bg-[#0052cc]' : 'bg-gray-300'}`}
+                        aria-label={`reviews page ${i+1}`}
                       />
                     ))}
                   </div>
-                  <h4 className="font-medium text-gray-900 mb-2">{review.title}</h4>
-                  <p className="text-gray-700 mb-3 line-clamp-3">{review.content}</p>
-                  <div className="text-sm text-gray-500">
-                    <span className="font-medium">
-                      {review.author_name || review.author?.display_name || '익명'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {reviews.length === 0 && (
-              <div className="col-span-full text-center text-gray-500">표시할 후기가 없습니다.</div>
-            )}
-          </div>
+                )}
+              </>
+            );
+          })()}
 
           <div className="text-center mt-12">
             <Link href="/review" className="inline-flex items-center text-[--color-brand] hover:opacity-80 font-medium text-lg">
@@ -562,27 +670,55 @@ export default function ShopPage() {
             <p className="text-lg text-gray-600">다양한 단체에서 제작한 맞춤 단체복을 만나보세요</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {caseStudies.map((caseStudy) => (
-              <div key={caseStudy.id} className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-                <div className="relative aspect-[4/3]">
-                  <Image
-                    src={caseStudy.image}
-                    alt={caseStudy.title}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                  <div className="absolute top-3 right-3 bg-[--color-brand] text-white px-3 py-1 rounded-full text-sm font-medium">
-                    {caseStudy.category}
+          {(() => {
+            const casesPer = viewport === 'sm' ? 1 : viewport === 'md' ? 2 : 4;
+            const cPages = Math.ceil(cases.length / casesPer) || 1;
+            const cStart = casesPage * casesPer;
+            const visibleCases = cases.slice(cStart, cStart + casesPer);
+            return (
+              <>
+                <div className={`grid gap-6 ${viewport==='lg' ? 'grid-cols-4' : viewport==='md' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {visibleCases.map((caseStudy) => (
+                    <div key={caseStudy.id} className="group">
+                      {/* Image Card */}
+                      <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow mb-4">
+                        <div className="relative aspect-square">
+                          <Image
+                            src={caseStudy.image}
+                            alt={caseStudy.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            unoptimized
+                          />
+                          <div className="absolute top-3 right-3 bg-[--color-brand] text-white px-3 py-1 rounded-full text-sm font-medium">
+                            {caseStudy.category}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Text Content - Outside Card */}
+                      <div className="px-2">
+                        <h3 className="font-bold text-gray-900 mb-2 text-lg">{caseStudy.title}</h3>
+                        <p className="text-gray-600 text-sm line-clamp-2">{caseStudy.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {cPages > 1 && (
+                  <div className="flex justify-center gap-2 mt-6">
+                    {Array.from({ length: cPages }).map((_, i) => (
+                      <button key={i} onClick={() => setCasesPage(i)} className={`w-2.5 h-2.5 rounded-full ${i===casesPage?'bg-[#0052cc]':'bg-gray-300'}`} aria-label={`cases page ${i+1}`} />
+                    ))}
                   </div>
-                </div>
-                <div className="p-6">
-                  <h3 className="font-bold text-gray-900 mb-2">{caseStudy.title}</h3>
-                  <p className="text-gray-600 text-sm">{caseStudy.description}</p>
-                </div>
-              </div>
-            ))}
+                )}
+              </>
+            );
+          })()}
+
+          <div className="text-center mt-12">
+            <Link href="/portfolio" className="inline-flex items-center text-[--color-brand] hover:opacity-80 font-medium text-lg">
+              더 많은 사례 보기 →
+            </Link>
           </div>
         </div>
       </section>
@@ -595,27 +731,44 @@ export default function ShopPage() {
             <p className="text-lg text-gray-600">간단한 4단계로 완성되는 맞춤 단체복</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {processSteps.map((step, index) => (
-              <div key={step.step} className="text-center relative">
-                {index < processSteps.length - 1 && (
-                  <div className="hidden lg:block absolute top-16 left-full w-full h-0.5 bg-gray-200 transform -translate-x-1/2 z-0">
-                    <div className="absolute right-0 top-1/2 transform translate-x-1 -translate-y-1/2 w-3 h-3 bg-[--color-brand] rounded-full"></div>
+          {(() => {
+            const procPer = viewport === 'sm' ? 1 : viewport === 'md' ? 2 : 4;
+            const pPages = Math.ceil(processSteps.length / procPer) || 1;
+            const pStart = processPage * procPer;
+            const visibleProc = processSteps.slice(pStart, pStart + procPer);
+            return (
+              <>
+                <div className={`grid gap-8 ${viewport==='lg' ? 'grid-cols-4' : viewport==='md' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {visibleProc.map((step, index) => (
+                    <div key={step.step} className="text-center relative">
+                      {index < processSteps.length - 1 && (
+                        <div className="hidden lg:block absolute top-16 left-full w-full h-0.5 bg-gray-200 transform -translate-x-1/2 z-0">
+                          <div className="absolute right-0 top-1/2 transform translate-x-1 -translate-y-1/2 w-3 h-3 bg-[--color-brand] rounded-full"></div>
+                        </div>
+                      )}
+                      <div className="relative z-10">
+                        <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-[--color-brand] to-[color-mix(in_oklab,var(--color-brand)_80%,black)] rounded-full flex items-center justify-center text-white">
+                          <step.icon size={48} />
+                        </div>
+                        <div className="absolute top-4 right-4 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-sm font-bold text-gray-900">
+                          {step.step}
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
+                      <p className="text-gray-600">{step.description}</p>
+                    </div>
+                  ))}
+                </div>
+                {pPages > 1 && (
+                  <div className="flex justify-center gap-2 mt-6">
+                    {Array.from({ length: pPages }).map((_, i) => (
+                      <button key={i} onClick={() => setProcessPage(i)} className={`w-2.5 h-2.5 rounded-full ${i===processPage?'bg-[#0052cc]':'bg-gray-300'}`} aria-label={`process page ${i+1}`} />
+                    ))}
                   </div>
                 )}
-                <div className="relative z-10">
-                  <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-[--color-brand] to-[color-mix(in_oklab,var(--color-brand)_80%,black)] rounded-full flex items-center justify-center text-white">
-                    <step.icon size={48} />
-                  </div>
-                  <div className="absolute top-4 right-4 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-sm font-bold text-gray-900">
-                    {step.step}
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
-                <p className="text-gray-600">{step.description}</p>
-              </div>
-            ))}
-          </div>
+              </>
+            );
+          })()}
         </div>
       </section>
 
@@ -684,6 +837,116 @@ export default function ShopPage() {
           관리자 상품 관리
         </Link>
       </div>
+
+      {/* Admin Quick Actions Floating Button */}
+      {isAdmin && (
+        <>
+          <button
+            onClick={() => { setAdminView('menu'); setAdminPanelOpen(true); }}
+            className="fixed left-5 bottom-5 z-40 px-4 py-2 bg-white text-[--color-brand] border border-[--color-brand] rounded-full shadow-lg hover:bg-[--color-brand-50]"
+            aria-label="관리자 전용기능"
+          >
+            관리자 전용기능
+          </button>
+
+          {adminPanelOpen && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+              <div className="bg-white w-11/12 max-w-5xl rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b">
+                  <div className="font-semibold">관리자 빠른 작업</div>
+                  <div className="flex items-center gap-2">
+                    {adminView !== 'menu' && (
+                      <button 
+                        onClick={() => {
+                          // iframe 내의 저장 버튼 클릭 트리거
+                          const iframeSrc = `/admin/${adminView}`;
+                          const iframe = document.querySelector(`iframe[src="${iframeSrc}"]`) as HTMLIFrameElement;
+                          if (iframe?.contentWindow) {
+                            try {
+                              let saveBtn: HTMLButtonElement | null = null;
+                              
+                              // 각 페이지별 저장 버튼 ID로 검색
+                              if (adminView === 'cases') {
+                                saveBtn = iframe.contentDocument?.querySelector('#add-case-btn') as HTMLButtonElement;
+                              } else if (adminView === 'categories') {
+                                saveBtn = iframe.contentDocument?.querySelector('#add-category-btn') as HTMLButtonElement;
+                              } else if (adminView === 'products') {
+                                // 상품 페이지의 경우 모달 내 저장 버튼을 찾음
+                                saveBtn = iframe.contentDocument?.querySelector('button[class*="bg-blue-600"]:contains("저장")') as HTMLButtonElement;
+                                if (!saveBtn) saveBtn = iframe.contentDocument?.querySelector('button:contains("등록")') as HTMLButtonElement;
+                                if (!saveBtn) saveBtn = iframe.contentDocument?.querySelector('button:contains("저장")') as HTMLButtonElement;
+                              } else if (adminView === 'reviews') {
+                                saveBtn = iframe.contentDocument?.querySelector('button:contains("저장")') as HTMLButtonElement;
+                                if (!saveBtn) saveBtn = iframe.contentDocument?.querySelector('button:contains("등록")') as HTMLButtonElement;
+                              }
+                              
+                              if (saveBtn) {
+                                saveBtn.click();
+                                alert('저장되었습니다.');
+                              } else {
+                                alert('저장 버튼을 찾을 수 없습니다. iframe 내에서 직접 저장해주세요.');
+                              }
+                            } catch (e) {
+                              console.error('iframe save error:', e);
+                              alert('iframe 내 저장 기능을 실행할 수 없습니다. iframe 내에서 직접 저장해주세요.');
+                            }
+                          }
+                        }}
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                      >
+                        저장
+                      </button>
+                    )}
+                    <button onClick={() => setAdminPanelOpen(false)} className="text-gray-500 hover:text-gray-700">닫기</button>
+                  </div>
+                </div>
+                {adminView === 'menu' && (
+                  <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onClick={() => setAdminView('categories')} className="border rounded-lg p-4 text-left hover:bg-gray-50">
+                      <div className="font-medium mb-1">카테고리 관리</div>
+                      <div className="text-sm text-gray-600">상품 카테고리 추가/수정/삭제</div>
+                    </button>
+                    <button onClick={() => setAdminView('products')} className="border rounded-lg p-4 text-left hover:bg-gray-50">
+                      <div className="font-medium mb-1">상품 관리</div>
+                      <div className="text-sm text-gray-600">상품 등록/수정, 옵션/상세</div>
+                    </button>
+                    <button onClick={() => setAdminView('reviews')} className="border rounded-lg p-4 text-left hover:bg-gray-50">
+                      <div className="font-medium mb-1">후기 관리</div>
+                      <div className="text-sm text-gray-600">고객 후기 관리</div>
+                    </button>
+                    <button onClick={() => setAdminView('cases')} className="border rounded-lg p-4 text-left hover:bg-gray-50">
+                      <div className="font-medium mb-1">제작사례 관리</div>
+                      <div className="text-sm text-gray-600">제작사례 추가/수정/삭제</div>
+                    </button>
+                  </div>
+                )}
+                {adminView !== 'menu' && (
+                  <div className="p-0">
+                    {adminView === 'categories' && (
+                      <iframe className="w-full h-[75vh]" src="/admin/categories" />
+                    )}
+                    {adminView === 'products' && (
+                      <iframe className="w-full h-[75vh]" src="/admin/products" />
+                    )}
+                    {adminView === 'reviews' && (
+                      <iframe className="w-full h-[75vh]" src="/admin/reviews" />
+                    )}
+                    {adminView === 'cases' && (
+                      <iframe className="w-full h-[75vh]" src="/admin/cases" />
+                    )}
+                  </div>
+                )}
+                {adminView !== 'menu' && (
+                  <div className="px-4 sm:px-6 py-3 border-t flex justify-between">
+                    <button onClick={() => setAdminView('menu')} className="px-4 py-2 border rounded">뒤로</button>
+                    <button onClick={() => setAdminPanelOpen(false)} className="px-4 py-2 bg-[--color-brand] text-white rounded">닫기</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -48,6 +48,7 @@ export default function AdminPage() {
     });
   };
   const [manualOpen, setManualOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
 
   // Dashboard metrics
   const stats = useMemo(() => {
@@ -266,6 +267,7 @@ export default function AdminPage() {
             <a href="/admin" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">문의 관리</a>
             <a href="/admin/reviews" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">리뷰 관리</a>
             <a href="/admin/products" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">상품 관리</a>
+            <a href="/admin/cases" className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50">제작사례 관리</a>
             <button className="px-3 py-2 rounded-full text-sm border bg-white hover:bg-gray-50" onClick={signOut}>로그아웃</button>
           </div>
         </div>
