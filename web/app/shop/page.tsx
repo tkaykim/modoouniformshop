@@ -522,13 +522,13 @@ export default function ShopPage() {
                     )}
 
                     {/* Product Name */}
-                    <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 text-lg">
+                    <h3 className="font-bold text-gray-900 mb-2 truncate text-base">
                       {product.name}
                     </h3>
 
                     {/* Short Description */}
                     {product.short_description && (
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                      <p className="text-sm text-gray-600 mb-4 truncate">
                         {product.short_description}
                       </p>
                     )}
