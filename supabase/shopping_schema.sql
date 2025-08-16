@@ -219,7 +219,8 @@ create table if not exists orders (
   pg_provider text default 'easypay',
   pg_authorization_id text,
   pg_approval jsonb,
-  pg_return_payload jsonb
+  pg_return_payload jsonb,
+  cart_snapshot jsonb
 );
 
 create table if not exists order_items (

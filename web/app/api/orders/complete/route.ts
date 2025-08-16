@@ -56,6 +56,11 @@ export async function POST(req: NextRequest) {
       await admin.from('cart_items').delete().match(cartFilter);
     }
 
+    // ensure order exists for admin panel even if items were empty
+    if (!items.length) {
+      await admin.from('orders').update({ cart_snapshot: order.cart_snapshot || null }).eq('id', order.id);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'unknown_error' }, { status: 500 });

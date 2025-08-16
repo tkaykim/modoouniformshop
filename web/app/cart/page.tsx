@@ -337,6 +337,7 @@ export default function CartPage() {
 						subtotal,
 						shippingFee,
 						total,
+						cartSnapshot: items.map(it => ({ id: it.id, product_id: it.product_id, selected_options: it.selected_options, quantity: it.quantity, unit_price: it.unit_price, total_price: it.total_price })),
 					}
 					}),
 				});

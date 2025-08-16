@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       addr1: orderDraft.addr1 || null,
       addr2: orderDraft.addr2 || null,
       session_id: sessionId || null,
+      cart_snapshot: orderDraft.cartSnapshot || null,
     } as any;
 
     const { data: orderRow, error: orderErr } = await admin.from('orders').insert(orderInsert).select('id').single();
