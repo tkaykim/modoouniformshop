@@ -179,6 +179,92 @@ create index if not exists idx_product_option_combinations_product on product_op
 create index if not exists idx_cart_items_user on cart_items (user_id);
 create index if not exists idx_cart_items_session on cart_items (session_id);
 
+-- Orders
+create table if not exists orders (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+
+  -- linkage & identity
+  user_id uuid references auth.users(id),
+  session_id text,
+  shop_order_no text not null unique,
+
+  -- status: 'pending' | 'paid' | 'failed' | 'cancelled'
+  status text not null default 'pending',
+
+  -- totals
+  subtotal decimal(10,2) not null default 0,
+  shipping_fee decimal(10,2) not null default 0,
+  total_amount decimal(10,2) not null default 0,
+
+  -- payment method
+  payment_method text,
+
+  -- orderer info
+  order_name text,
+  order_phone text,
+  order_email text,
+
+  -- shipping info
+  shipping_method text,
+  same_as_orderer boolean default true,
+  receiver_name text,
+  receiver_phone text,
+  zip_code text,
+  addr1 text,
+  addr2 text,
+
+  -- pg payloads
+  pg_provider text default 'easypay',
+  pg_authorization_id text,
+  pg_approval jsonb,
+  pg_return_payload jsonb
+);
+
+create table if not exists order_items (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  order_id uuid references orders(id) on delete cascade,
+
+  product_id uuid,
+  product_name text,
+  product_slug text,
+  selected_options jsonb,
+  unit_price decimal(10,2) not null,
+  quantity int not null,
+  total_price decimal(10,2) not null
+);
+
+create index if not exists idx_orders_shop_order_no on orders (shop_order_no);
+create index if not exists idx_orders_status on orders (status);
+
+-- Optional: reasons for cancellation/refund
+alter table if exists orders
+  add column if not exists cancel_reason text,
+  add column if not exists refund_reason text;
+
+-- User Addresses (배송지 주소록)
+create table if not exists user_addresses (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+
+  user_id uuid references auth.users(id) on delete cascade,
+
+  label text not null, -- 배송지 이름
+  orderer_name text,
+  orderer_phone text,
+  receiver_name text,
+  receiver_phone text,
+  zip_code text,
+  addr1 text,
+  addr2 text,
+  is_default boolean default false
+);
+
+create index if not exists idx_user_addresses_user on user_addresses (user_id);
+
 -- RLS Policies
 alter table product_categories enable row level security;
 alter table products enable row level security;

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChatModal } from "@/components/chat/ChatModal";
 import { SiteHeader } from "../../components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { supabase } from "@/lib/supabaseClient";
 import { 
   MessageCircle, 
@@ -470,7 +471,7 @@ export default function ShopPage() {
                 <Link
                   key={product.id}
                   href={`/shop/${product.slug}`}
-                  className="group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                  className="bg-white rounded-xl shadow-lg overflow-hidden transition-shadow duration-300"
                 >
                   {/* Product Image */}
                   <div className="relative w-full pt-[133%] bg-gray-100 overflow-hidden">
@@ -479,7 +480,7 @@ export default function ShopPage() {
                         src={product.primary_image}
                         alt={product.name}
                         fill
-                        className="object-cover absolute inset-0 group-hover:scale-105 transition-transform duration-300"
+                        className="object-cover absolute inset-0"
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         unoptimized
                       />
@@ -496,20 +497,7 @@ export default function ShopPage() {
                       </div>
                     )}
 
-                    {/* Hover Actions */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setOpenChat(true);
-                          }}
-                          className="bg-white text-gray-900 px-4 py-2 rounded-full font-medium hover:bg-gray-100"
-                        >
-                          견적문의
-                        </button>
-                      </div>
-                    </div>
+                    {/* Hover Actions removed as per requirement */}
                   </div>
 
                   {/* Product Info */}
@@ -587,7 +575,7 @@ export default function ShopPage() {
                 >
                   <div className="flex gap-4 pr-4">
                     {reviews.map((review, idx) => (
-                      <div key={review.id} className="shrink-0 snap-center" style={{ width: `${itemWidthPct}%` }}>
+                      <div key={review.id} className="shrink-0 snap-center" style={{ width: `${itemWidthPct}%`, maxWidth: '28rem' }}>
                         <div className="bg-gray-50 rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
                           <div className="relative aspect-square">
                             {review.images && review.images.length > 0 ? (
@@ -864,8 +852,8 @@ export default function ShopPage() {
           </button>
 
           {adminPanelOpen && (
-            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-              <div className="bg-white w-11/12 max-w-5xl rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh] modal-fluid-lg">
                 <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b">
                   <div className="font-semibold">관리자 빠른 작업</div>
                   <div className="flex items-center gap-2">
@@ -961,6 +949,8 @@ export default function ShopPage() {
           )}
         </>
       )}
+
+      <SiteFooter />
     </div>
   );
 }

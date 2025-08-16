@@ -32,6 +32,7 @@ body {
   background: var(--background) !important;
   color: var(--foreground) !important;
   font-family: Arial, Helvetica, sans-serif;
+  line-height: clamp(1.35, 1.2 + 0.3vw, 1.6);
 }
 
 /* 추가 다크모드 무시 규칙 */
@@ -80,3 +81,11 @@ a { color: inherit; }
 
 svg.icon-brand { color: var(--color-brand); stroke: currentColor; }
 svg.icon-muted { color: var(--text-muted); stroke: currentColor; }
+
+/* Hide scrollbars for custom scrollers */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Fluid modal widths */
+.modal-fluid { width: min(92vw, clamp(20rem, 85vw, 64rem)); max-width: 100%; }
+.modal-fluid-lg { width: min(96vw, 80rem); max-width: 100%; }

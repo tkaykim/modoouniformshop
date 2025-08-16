@@ -315,38 +315,43 @@ export default function ProductDetailPage() {
         localStorage.setItem('cart_session_id', sessionId);
       }
 
+      // Determine authenticated user (for RLS policy)
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id || null;
+
       if (hasMatrix) {
-        // Build rows for each non-zero variant
         const rows: any[] = [];
         Object.entries(matrixQuantities).forEach(([sizeId, colorMap]) => {
           Object.entries(colorMap).forEach(([colorId, qty]) => {
             if (qty > 0) {
+              const unit = getCellUnitPrice(sizeId, colorId);
               rows.push({
+                user_id: userId,
                 session_id: sessionId,
                 product_id: product.id,
                 selected_options: { size: sizeId, color: colorId },
                 quantity: qty,
-                unit_price: getCellUnitPrice(sizeId, colorId),
-                total_price: qty * getCellUnitPrice(sizeId, colorId)
+                unit_price: unit,
+                total_price: qty * unit,
               });
             }
           });
         });
         if (rows.length === 0) return;
-        const { error } = await supabase.from('cart_items').insert(rows);
-        if (error) throw error;
+        const res = await fetch('/api/cart/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows }) });
+        if (!res.ok) throw new Error(await res.text());
       } else {
-        const { error } = await supabase
-          .from('cart_items')
-          .insert({
-            session_id: sessionId,
-            product_id: product.id,
-            selected_options: selectedOptions,
-            quantity: quantity,
-            unit_price: calculateCurrentPrice(),
-            total_price: calculateTotalPrice()
-          });
-        if (error) throw error;
+        const payload = {
+          user_id: userId,
+          session_id: sessionId,
+          product_id: product.id,
+          selected_options: selectedOptions,
+          quantity: quantity,
+          unit_price: calculateCurrentPrice(),
+          total_price: calculateTotalPrice(),
+        };
+        const res = await fetch('/api/cart/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(await res.text());
       }
 
       alert('장바구니에 추가되었습니다!');
