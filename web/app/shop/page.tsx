@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChatModal } from "@/components/chat/ChatModal";
@@ -116,6 +116,9 @@ export default function ShopPage() {
   const [processPage, setProcessPage] = useState(0);
   const [viewport, setViewport] = useState<'sm'|'md'|'lg'>('sm');
 
+  // Reviews horizontal scroll ref
+  const reviewsScrollRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     loadCategories();
     loadProducts();
@@ -228,31 +231,14 @@ export default function ShopPage() {
 
   const loadReviews = async () => {
     try {
-      // 1차 시도: display_at 기준 + 프로필 조인
-      let { data, error } = await supabase
+      // 단순 쿼리로 400 오류 방지 (조인 제거)
+      const { data, error } = await supabase
         .from("reviews")
-        .select(`
-          id,
-          rating,
-          title,
-          content,
-          images,
-          display_at,
-          author_name,
-          author:profiles(display_name)
-        `)
-        .order("display_at", { ascending: false })
+        .select("id, rating, title, content, images, display_at, created_at, author_name")
+        .order("created_at", { ascending: false } as any)
         .limit(24);
 
-      // 조인/정렬 이슈 대비: 2차 시도 (조인 제거 + created_at 기준)
-      if (error || !data || data.length === 0) {
-        const alt = await supabase
-          .from("reviews")
-          .select("id, rating, title, content, images, display_at, author_name")
-          .order("created_at", { ascending: false } as any)
-          .limit(24);
-        if (!alt.error) data = alt.data as any[];
-      }
+      if (error) throw error;
 
       const all = (data || []) as Review[];
       const photoFirst = all.filter(r => Array.isArray(r.images) && r.images.length > 0);
@@ -260,7 +246,6 @@ export default function ShopPage() {
       const prioritized = [...photoFirst, ...textOnly].slice(0, 8);
       setReviews(prioritized);
     } catch (err) {
-      // 최종 폴백: 에러시 빈 배열로 세팅
       console.error("리뷰 로드 실패:", err);
       setReviews([]);
     }
@@ -384,13 +369,14 @@ export default function ShopPage() {
       <ChatModal open={openChat} onClose={() => setOpenChat(false)} />
 
       {/* Hero Section: Static single image */}
-      <section className="relative h-[600px] lg:h-[700px] overflow-hidden bg-black">
+      <section className="relative h-[400px] sm:h-[500px] lg:h-[700px] overflow-hidden bg-white sm:bg-black">
         <Image
           src="https://modoouniform.com/data/skin/front/singgreen_250227/img/banner/067dee3807b22ea9e8f8cbb694d5db35_13869.png"
           alt="모두의 유니폼 히어로"
           fill
-          className="object-cover"
+          className="object-cover w-full h-full"
           priority
+          sizes="100vw"
         />
       </section>
 
@@ -589,66 +575,94 @@ export default function ShopPage() {
           </div>
 
           {(() => {
-            const perPage = viewport === 'sm' ? 1 : viewport === 'md' ? 2 : 4;
-            const pages = Math.ceil(reviews.length / perPage) || 1;
-            const start = reviewsPage * perPage;
-            const visible = reviews.slice(start, start + perPage);
+            const maxDots = 4;
+            const itemWidthPct = viewport === 'lg' ? 30 : viewport === 'md' ? 60 : 85; // show peek of neighbors
+            
             return (
               <>
-                <div className={`grid gap-4 ${viewport==='lg' ? 'grid-cols-4' : viewport==='md' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                  {visible.map((review) => (
-                    <div key={review.id} className="bg-gray-50 rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
-                      <div className="relative aspect-square">
-                        {review.images && review.images.length > 0 ? (
-                          <Image
-                            src={review.images[0]}
-                            alt={review.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400">
-                            이미지 없음
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-6 flex flex-col h-56">
-                        <div>
-                          <div className="flex items-center gap-1 mb-3">
-                            {[...Array(5)].map((_, i) => (
-                              <Star 
-                                key={i} 
-                                size={16} 
-                                className={`${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                <div 
+                  ref={reviewsScrollRef}
+                  className="overflow-x-auto overflow-y-hidden no-scrollbar snap-x snap-mandatory px-4"
+                  style={{ WebkitOverflowScrolling: 'touch' as any }}
+                >
+                  <div className="flex gap-4 pr-4">
+                    {reviews.map((review, idx) => (
+                      <div key={review.id} className="shrink-0 snap-center" style={{ width: `${itemWidthPct}%` }}>
+                        <div className="bg-gray-50 rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
+                          <div className="relative aspect-square">
+                            {review.images && review.images.length > 0 ? (
+                              <Image
+                                src={review.images[0]}
+                                alt={review.title}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                priority={idx === 0}
+                                unoptimized
                               />
-                            ))}
+                            ) : (
+                              <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400">
+                                이미지 없음
+                              </div>
+                            )}
                           </div>
-                          <h4 className="font-medium text-gray-900 mb-2 truncate block">{review.title}</h4>
-                          <p className="text-gray-700 mb-3 line-clamp-3">{review.content}</p>
-                        </div>
-                        <div className="mt-auto pt-2 flex items-center justify-between text-sm text-gray-500">
-                          <span className="font-medium">{review.author_name || review.author?.display_name || '익명'}</span>
-                          <span>{formatDate((review as any).display_at || (review as any).created_at)}</span>
+                          <div className="p-6 flex flex-col h-56">
+                            <div>
+                              <div className="flex items-center gap-1 mb-3">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star 
+                                    key={i} 
+                                    size={16} 
+                                    className={`${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                                  />
+                                ))}
+                              </div>
+                              <h4 className="font-medium text-gray-900 mb-2 truncate block">{review.title}</h4>
+                              <p className="text-gray-700 mb-3 line-clamp-3">{review.content}</p>
+                            </div>
+                            <div className="mt-auto pt-2 flex items-center justify-between text-sm text-gray-500">
+                              <span className="font-medium">{review.author_name || review.author?.display_name || '익명'}</span>
+                              <span>{formatDate((review as any).display_at || (review as any).created_at)}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  {visible.length === 0 && (
-                    <div className="text-center text-gray-500">표시할 후기가 없습니다.</div>
-                  )}
-                </div>
-                {pages > 1 && (
-                  <div className="flex justify-center gap-2 mt-6">
-                    {Array.from({ length: pages }).map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setReviewsPage(i)}
-                        className={`w-2.5 h-2.5 rounded-full ${i === reviewsPage ? 'bg-[#0052cc]' : 'bg-gray-300'}`}
-                        aria-label={`reviews page ${i+1}`}
-                      />
                     ))}
                   </div>
+                </div>
+
+                {/* Dots: 4개 고정, 스크롤 위치 기준 계산 */}
+                {reviews.length > 0 && (
+                  <div className="flex justify-center gap-2 mt-6">
+                    {Array.from({ length: Math.min(maxDots, 4) }).map((_, i) => {
+                      // 현재 스크롤 위치를 기준으로 인덱스 추정
+                      const container = reviewsScrollRef.current;
+                      let activeIndex = 0;
+                      if (container) {
+                        const scrollLeft = container.scrollLeft;
+                        const totalWidth = container.scrollWidth - container.clientWidth;
+                        const progress = totalWidth > 0 ? scrollLeft / totalWidth : 0;
+                        activeIndex = Math.round(progress * (maxDots - 1));
+                      }
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            const container = reviewsScrollRef.current;
+                            if (!container) return;
+                            const totalWidth = container.scrollWidth - container.clientWidth;
+                            const target = (i / (maxDots - 1)) * totalWidth;
+                            container.scrollTo({ left: target, behavior: 'smooth' });
+                          }}
+                          className={`w-2.5 h-2.5 rounded-full ${i === activeIndex ? 'bg-[#0052cc]' : 'bg-gray-300'}`}
+                          aria-label={`reviews dot ${i+1}`}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+                
+                {reviews.length === 0 && (
+                  <div className="text-center text-gray-500">표시할 후기가 없습니다.</div>
                 )}
               </>
             );
